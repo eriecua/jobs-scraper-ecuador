@@ -358,9 +358,15 @@ Todas siguen en el CSV adjunto.
 
 ### Detalles que muerden
 
+- **Escribe los términos como quieras**: `Power BI`, `optimización` o `VBA` funcionan
+  igual que en minúsculas y sin tildes. El código los normaliza al cargar, y avisa si dos
+  entradas resultan ser el mismo término (se queda con el peso más alto).
 - **Los términos se comparan como palabra completa.** Una raíz como `estadistic` **no
   coincide nunca** con "estadística": hay que escribir cada forma. Por eso `bi` no salta
   dentro de "combinado" ni `sales` dentro de "Salesforce".
+- **Cuidado con repetir una clave** en el mismo diccionario (`'mejora continua'` dos
+  veces): Python se queda con la última en silencio y el otro peso se pierde. El aviso de
+  duplicados solo detecta las que difieren en mayúsculas o tildes, no las idénticas.
 - **El término más fuerte de `INTERES` cuenta entero y los demás a mitad**, para que
   "Analista de Datos" no se dispare solo por decir dos palabras del mismo tema.
 - **`NIVELES` es solo etiqueta** (*Junior / Senior / Jefatura / Prácticas*): no suma ni

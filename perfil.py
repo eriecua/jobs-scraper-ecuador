@@ -39,6 +39,8 @@ INTERES = {
     'planificacion': 20,
     'planner': 20,
     'planificador': 20,
+    'optimización': 20,
+    'inteligencia artificial': 20,
 }
 
 # DESEABLES: herramientas y detalles que suman encima.
@@ -57,6 +59,11 @@ DESEABLES = {
     'excel': 8,
     'automatizacion': 8,
     'kpi': 8,
+    'indicadores': 8,
+    'base de datos': 8,
+    'VBA': 5,
+    'Power Query': 5,
+    'Project': 5,
 }
 
 # EXCLUIDOS: temas que no quieres ver. Vetan la oferta entera, no la puntuan bajo.
@@ -98,6 +105,42 @@ def _norm(texto):
     return re.sub(r'\s+', ' ', limpio).strip()
 
 
+def _normalizar(terminos, nombre):
+    """Pasa las listas de arriba por _norm, para que se puedan escribir con naturalidad.
+
+    Antes las claves se comparaban tal cual contra un titulo ya normalizado, asi que
+    'Power BI', 'VBA' u 'optimizacion' con tilde no coincidian NUNCA y nadie se enteraba.
+    Escribir los terminos como uno los diria es lo normal; normalizarlos es cosa del
+    codigo, no del que edita la lista.
+    """
+    es_dict = isinstance(terminos, dict)
+    salida = {} if es_dict else []
+    vistos = {}
+
+    for clave in terminos:
+        limpia = _norm(clave)
+        if not limpia:
+            continue
+        if limpia in vistos:
+            print(f"   [AVISO] perfil.py: '{clave}' y '{vistos[limpia]}' son el mismo "
+                  f"termino en {nombre}; se conserva el peso mas alto")
+        if es_dict:
+            salida[limpia] = max(salida.get(limpia, 0), terminos[clave])
+        elif limpia not in salida:
+            salida.append(limpia)
+        vistos[limpia] = clave
+
+    return salida
+
+
+# Se normalizan una vez al cargar el modulo, no en cada comparacion.
+_INTERES = _normalizar(INTERES, 'INTERES')
+_DESEABLES = _normalizar(DESEABLES, 'DESEABLES')
+_EXCLUIDOS = _normalizar(EXCLUIDOS, 'EXCLUIDOS')
+# NIVELES no se normaliza: sus claves usan el espacio inicial (' jr', ' sr') para no
+# coincidir dentro de otra palabra, y quitarselo las volveria imprecisas.
+
+
 def _coincide(termino, texto):
     """Busca el termino como palabra completa.
 
@@ -123,7 +166,7 @@ def excluir(titulo, familia=None):
     QUE termino esta recortando y cuanto. Sin eso, la exclusion es una caja negra.
     """
     t = _norm(titulo)
-    for termino in EXCLUIDOS:
+    for termino in _EXCLUIDOS:
         if _coincide(termino, t):
             return termino
     if familia and familia in FAMILIAS_EXCLUIDAS:
@@ -144,8 +187,8 @@ def puntuar(titulo):
     if not t:
         return 0, []
 
-    del_interes = [(k, v) for k, v in INTERES.items() if _coincide(k, t)]
-    deseables = [(k, v) for k, v in DESEABLES.items() if _coincide(k, t)]
+    del_interes = [(k, v) for k, v in _INTERES.items() if _coincide(k, t)]
+    deseables = [(k, v) for k, v in _DESEABLES.items() if _coincide(k, t)]
 
     if not del_interes and not deseables:
         return 0, []
