@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+
+# Salidas del scraper
+data/
+reporte_*.xlsx
+
+# Credenciales del correo
+.env
+
+# Entornos virtuales
+.venv/
+venv/
