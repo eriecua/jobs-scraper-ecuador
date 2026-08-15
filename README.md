@@ -132,6 +132,40 @@ SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo')
 DESCARTAR_DESCRIPCION = True   # False para conservar la descripción en el CSV
 ```
 
+### Ciudades y provincias — `ubicaciones.py`
+
+Los tres sitios escriben la misma ciudad de forma distinta. En el histórico hay **19
+textos** para 6 ciudades reales:
+
+```
+'Quito, Pichincha, Ecuador'   'Quito, Pichincha'   'Quito, P, EC'
+'Quito Canton, Pichincha, Ecuador'   'Pichincha, Ecuador'
+```
+
+`normalizar()` los convierte a un par **(ciudad, provincia)**, y ese par es lo que se
+guarda en el CSV y lo que agrupa el gráfico del correo. Una sola tabla para los dos.
+
+```python
+CANTONES = {'quito': ('Quito', 'pichincha'), 'duran': ('Duran', 'guayas'), ...}
+ALIAS    = {('eloy alfaro', 'guayas'): 'duran', ...}   # parroquias, no cantones
+```
+
+Tres cosas que conviene saber antes de editarlo:
+
+- **Ciudad y provincia son cosas distintas.** Durán y Samborondón son cantones propios, no
+  Guayaquil. Si el texto solo nombra la provincia, la ciudad queda **vacía** y el gráfico
+  dice `Pichincha (prov.)`: no se inventa la capital.
+- **Se trabaja por componentes**, no buscando en la cadena entera. Es lo que permite que
+  `"Esmeraldas, Esmeraldas"` (cantón y provincia se llaman igual) y `"La Concordia, Santo
+  Domingo de los Tsáchilas"` (el nombre de un cantón está dentro del de la provincia) den
+  la respuesta correcta.
+- **`ALIAS` lleva la provincia en la clave** a propósito: hay un *Eloy Alfaro* en Guayas
+  (parroquia de Durán), otro cantón en Esmeraldas y una parroquia en Manta. Sin la
+  provincia no se pueden distinguir.
+
+Para añadir una ciudad, basta su entrada en `CANTONES`. Esto es independiente de
+`SLUGS_UBICACION`, que es lo que Computrabajo necesita para *buscar*.
+
 ### Categorías de los gráficos — `reporte.py`
 
 `FAMILIAS` agrupa los títulos (Ventas, Datos/BI, Logística…). Gana la primera coincidencia,
@@ -187,6 +221,7 @@ Cada uno hace un solo trabajo:
 | `buscador.py` | Busca en los tres sitios y junta los resultados |
 | `computrabajo.py` | Raspa Computrabajo (jobspy no lo cubre) |
 | `historico.py` | Decide qué es nuevo y guarda los CSV |
+| `ubicaciones.py` | Convierte la ubicación cruda de cada sitio en ciudad + provincia |
 | `perfil.py` | Puntúa cada oferta contra lo que buscas |
 | `reporte.py` | Arma el correo con los gráficos |
 | `correo.py` | Lo envía por Gmail |
@@ -196,9 +231,17 @@ Cada uno hace un solo trabajo:
 Cada corrida escribe **solo las ofertas nuevas** en
 `data/nuevos_<etiqueta>_<timestamp>.csv`, con las columnas de jobspy. Las principales:
 
-`site`, `title`, `company`, `location`, `date_posted`, `job_type`, `job_url`,
-`is_remote`, `min_amount`, `max_amount`, `currency`, `company_industry`, `description`,
-`salary`.
+`site`, `title`, `company`, `location`, `ciudad`, `provincia`, `date_posted`, `job_type`,
+`job_url`, `is_remote`, `min_amount`, `max_amount`, `currency`, `company_industry`,
+`description`, `salary`.
+
+`ciudad` y `provincia` las añade `ubicaciones.py` a partir de `location`, que se conserva
+cruda por si hay que depurar un caso raro. Son las columnas por las que se filtra en
+Excel: `location` trae 19 formas distintas de escribir 6 ciudades.
+
+En el CSV del diario hay además `ciudad_busqueda`, y **no es lo mismo que `ciudad`**: la
+primera dice qué se buscó, la segunda qué dice la oferta. Una búsqueda en Quito devuelve
+legítimamente ofertas de Samborondón.
 
 Cada sitio llena las que puede: LinkedIn e Indeed dan el salario en `min_amount`/
 `max_amount`; Computrabajo lo da como texto en `salary`. `date_posted` sí queda
@@ -283,11 +326,8 @@ SVG ni imágenes: nada de eso sobrevive en Gmail y Outlook.
 
 Tres cosas que se ajustan a mano en `reporte.py`:
 
-- **`CIUDADES` / `PROVINCIAS` / `CODIGOS_INDEED`** — cada sitio escribe la ubicación a su
-  manera (`"Quito, Pichincha, Ecuador"`, `"Quito, P, EC"`, `"19 de Marzo, Esmeraldas"`).
-  `ciudad_normalizada()` busca la ciudad en cualquier parte del texto y cae a la provincia
-  si hace falta. Sin esto el gráfico salía con categorías como `c`, `G` o `Eloy Alfaro`.
-  Cubre el **95%** del histórico; el resto queda en *Otras*.
+- **Las ubicaciones** ya no se configuran aquí: viven en `ubicaciones.py` (siguiente
+  apartado), que es la misma tabla que rellena las columnas del CSV.
 - **`FAMILIAS`** — agrupa los títulos en Ventas, Datos/BI, Logística, etc. Gana la primera
   que coincida, así que las específicas van antes que las genéricas. Cubre el **85%**; el
   resto cae en *Otros*, que siempre se muestra al final aunque sea grande.

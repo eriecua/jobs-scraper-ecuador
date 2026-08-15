@@ -34,7 +34,8 @@ dependencias que faltan en `requirements.txt` (ya pasó con `requests` y `beauti
 Lo que no necesita red (`reporte.py`, `perfil.py`, `historico.py`) se prueba offline
 contra `data/historico.csv`.
 
-Códigos de salida: `0` ok · `1` todos los sitios fallaron · `2` no se pudo enviar el correo.
+Códigos de salida: `0` ok · `1` todos los sitios fallaron · `2` no se pudo enviar el correo ·
+`3` no se pudo escribir `data/historico.csv` (lo tienes abierto en Excel).
 
 ## Los datos, medidos — no supuestos
 
@@ -52,8 +53,12 @@ Consecuencias, antes de diseñar nada encima:
 - **`description` se descarta a propósito** (`DESCARTAR_DESCRIPCION` en `buscador.py`).
   Solo la traía Indeed; el índice de compatibilidad puntúa con el título.
 - **Las ubicaciones no coinciden entre sitios**: `"Quito, Pichincha, Ecuador"` (LinkedIn),
-  `"Quito, P, EC"` (Indeed), `"Quito, Pichincha"` (Computrabajo). Hay que normalizarlas
-  (`ciudad_normalizada` en `reporte.py`) o los conteos por ciudad salen partidos.
+  `"Quito, P, EC"` (Indeed), `"Quito, Pichincha"` (Computrabajo) — 19 textos para 6
+  ciudades. Se normalizan en `ubicaciones.py`, que devuelve **(ciudad, provincia)** y es
+  la única tabla: la usan el CSV (columnas `ciudad`/`provincia`) y el gráfico del correo.
+  Ciudad y provincia no se mezclan: Durán y Samborondón son cantones, no Guayaquil, y una
+  ubicación que solo nombre la provincia deja la ciudad vacía en vez de inventar la
+  capital. `location` cruda se conserva siempre.
 - **LinkedIn publica spam real** ("Trabaja con nosotros", clickbait tipo "MOVIES FROM THE
   80S"). No es un fallo del scraper: son ofertas con URL válida. Se filtran en el reporte
   (`NO_OFERTAS`), no en el origen.
@@ -63,6 +68,7 @@ Consecuencias, antes de diseñar nada encima:
 | Qué | Dónde |
 |---|---|
 | Ciudades del diario | `CIUDADES` en `main.py` **y** `SLUGS_UBICACION` en `computrabajo.py` |
+| Cómo se agrupan las ubicaciones | `CANTONES` / `ALIAS` en `ubicaciones.py` (afecta al CSV y al gráfico a la vez) |
 | Términos del índice de compatibilidad | `INTERES` / `DESEABLES` (ordenan) y `EXCLUIDOS` / `FAMILIAS_EXCLUIDAS` (quitan) en `perfil.py` |
 | Familias de puesto del gráfico | `FAMILIAS` en `reporte.py` |
 | Descartar la descripción | `DESCARTAR_DESCRIPCION` en `buscador.py` |

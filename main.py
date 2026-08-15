@@ -13,7 +13,9 @@ verdad esta repartido:
     computrabajo.py raspa Computrabajo (jobspy no lo cubre)
     historico.py    decide que es nuevo y guarda
     perfil.py       puntua cada oferta contra lo que buscas
-    reporte.py      arma el correo
+    ubicaciones.py  normaliza las 19 formas de escribir una ciudad
+    reporte.py      decide que dice el correo y en que orden
+    graficos.py     dibuja las barras, los KPIs y las insignias
     correo.py       lo envia
 """
 import argparse
@@ -42,11 +44,29 @@ ENVIAR_SI_VACIO = False  # si no hay nada nuevo, por defecto no manda correo
 EXIT_OK = 0
 EXIT_SCRAPE_FALLO = 1
 EXIT_CORREO_FALLO = 2
+EXIT_ESCRITURA_FALLO = 3  # el historico estaba bloqueado (abierto en Excel)
 
 
 def _ciudad_corta(ubicacion):
     """'Quito, Ecuador' -> 'Quito'. Para la columna ciudad_busqueda del CSV."""
     return ubicacion.split(',')[0].strip()
+
+
+def _consolidar(piezas):
+    """Une los DataFrames de varias busquedas en uno solo, sin URLs repetidas.
+
+    dropna(axis=1) por pieza porque cada sitio devuelve columnas distintas y las que
+    vienen 100% vacias solo estorban al concatenar.
+    """
+    df = pd.concat([p.dropna(axis=1, how='all') for p in piezas], ignore_index=True)
+    return df.drop_duplicates(subset=['job_url'], keep='first').reset_index(drop=True)
+
+
+def _registrar(df, etiqueta):
+    """Actualiza el historico y avisa por consola. Devuelve solo las ofertas nuevas."""
+    nuevos = historico.actualizar(df, etiqueta)
+    print(f'[OK] {len(df)} empleos ({len(nuevos)} nuevos desde la ultima corrida)')
+    return nuevos
 
 
 def ejecutar_diario():
@@ -81,9 +101,7 @@ def ejecutar_diario():
         print('[AVISO] Sin resultados en ninguna ciudad')
         return EXIT_OK
 
-    df = pd.concat([p.dropna(axis=1, how='all') for p in partes], ignore_index=True)
-    nuevos = historico.actualizar(df, 'diario')
-    print(f'[OK] {len(df)} empleos ({len(nuevos)} nuevos desde la ultima corrida)')
+    nuevos = _registrar(_consolidar(partes), 'diario')
 
     if nuevos.empty and not ENVIAR_SI_VACIO:
         print('[OK] Nada nuevo: no se envia correo')
@@ -94,12 +112,20 @@ def ejecutar_diario():
     return EXIT_OK if correo.enviar(asunto, cuerpo, ruta) else EXIT_CORREO_FALLO
 
 
+def _terminos(args):
+    """Los terminos a buscar, juntando --termino y el argumento posicional."""
+    crudos = list(args.terminos) + [args.termino_posicional]
+    return [t.strip() for t in crudos if t and t.strip()]
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Scraper de empleos (LinkedIn + Indeed + Computrabajo)')
-    parser.add_argument('termino', nargs='?', default='',
+    parser.add_argument('termino_posicional', nargs='?', default='',
                         help='Puesto a buscar. Ej: "Data Analyst". '
-                             'Si lo omites, trae todos los puestos de la ubicacion')
+                             'Hace falta al menos uno, aqui o en --termino')
+    parser.add_argument('-t', '--termino', dest='terminos', nargs='+', default=[],
+                        help='Uno o varios puestos a buscar. Ej: --termino "Data Analyst" "Data Scientist"')
     parser.add_argument('--ubicacion', default='Ecuador', help='Ubicacion (default: Ecuador)')
     parser.add_argument('--resultados', type=int, default=100,
                         help='Cuantos empleos POR SITIO (default: 100)')
@@ -120,19 +146,30 @@ def main():
     if args.diario:
         return ejecutar_diario()
 
-    df, fallidos = buscar(
-        termino=args.termino,
-        ubicacion=args.ubicacion,
-        resultados=args.resultados,
-        horas=args.horas,
-        tipo=args.tipo,
-        distancia=args.distancia,
-        con_descripcion=args.descripcion,
-        sitios=[s.strip() for s in args.sitios.split(',') if s.strip()],
-        pais=args.pais,
-    )
+    terminos = _terminos(args)
+    if not terminos:
+        print('[ERROR] Indica al menos un termino, como argumento o con --termino. '
+              'Ej: .\\scrap.cmd "Data Analyst"', file=sys.stderr)
+        return EXIT_SCRAPE_FALLO
 
-    if df.empty:
+    piezas, fallidos = [], []
+    for termino in terminos:
+        df_parcial, fallidos_parcial = buscar(
+            termino=termino,
+            ubicacion=args.ubicacion,
+            resultados=args.resultados,
+            horas=args.horas,
+            tipo=args.tipo,
+            distancia=args.distancia,
+            con_descripcion=args.descripcion,
+            sitios=[s.strip() for s in args.sitios.split(',') if s.strip()],
+            pais=args.pais,
+        )
+        if not df_parcial.empty:
+            piezas.append(df_parcial)
+        fallidos.extend(fallidos_parcial)
+
+    if not piezas:
         # "Cero ofertas" sale 0; "todos los sitios reventaron" sale 1, para que una tarea
         # agendada pueda avisar de la averia en vez de tragarsela.
         if fallidos:
@@ -141,10 +178,8 @@ def main():
         print("[AVISO] Sin resultados")
         return EXIT_OK
 
-    # Sin puesto, la busqueda se identifica por la ubicacion.
-    etiqueta = args.termino or args.ubicacion
-    nuevos = historico.actualizar(df, etiqueta)
-    print(f"[OK] {len(df)} empleos ({len(nuevos)} nuevos desde la ultima corrida)")
+    etiqueta = ', '.join(terminos) if len(terminos) > 1 else terminos[0]
+    nuevos = _registrar(_consolidar(piezas), etiqueta)
 
     if nuevos.empty:
         print("[OK] Nada nuevo: solo se actualizo el historico")
@@ -155,4 +190,11 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except RuntimeError as fallo:
+        # historico.actualizar() avisa asi cuando no puede escribir el CSV. Se atrapa
+        # aqui para que en la terminal salga el mensaje y no un traceback de diez lineas;
+        # el codigo de salida sigue siendo distinto de cero para la tarea agendada.
+        print(f'[ERROR] {fallo}', file=sys.stderr)
+        sys.exit(EXIT_ESCRITURA_FALLO)

@@ -6,6 +6,8 @@ from datetime import date, datetime, timedelta
 
 import pandas as pd
 
+import ubicaciones
+
 RUTA = os.path.join('data', 'historico.csv')
 
 # Pasado este plazo una oferta deja de bloquear: si la vuelven a publicar, reaparece.
@@ -13,6 +15,10 @@ DIAS_CADUCIDAD = 60
 
 # Columnas de las que depende la deduplicacion. jobspy no siempre las devuelve todas.
 COLUMNAS_CLAVE = ('id', 'company', 'title', 'location')
+# date_posted tambien se persiste para conservar la fecha real del aviso, y ciudad/
+# provincia para poder agrupar en Excel sin pelearse con las 19 formas de escribir
+# 'location'. Ninguna de las dos entra en COLUMNAS_CLAVE: la deduplicacion no cambia.
+COLUMNAS_HISTORICO = COLUMNAS_CLAVE + ('date_posted', 'ciudad', 'provincia')
 
 
 def _clave(df):
@@ -37,7 +43,39 @@ def _clave(df):
     return limpiar(df['company']) + '|' + limpiar(df['title']) + '|' + ciudad
 
 
-def _asegurar_columnas(df, columnas=COLUMNAS_CLAVE):
+def _rellenar_ubicacion(df):
+    """Deriva ciudad/provincia de 'location' donde falten.
+
+    No hace falta migrar el CSV a mano: 'location' siempre se guardo, asi que el dato se
+    reconstruye al leer y queda escrito en la siguiente pasada. Va ANTES de
+    _asegurar_columnas a proposito; si fuera despues, esa ya las habria creado vacias y
+    esto no dispararia nunca.
+
+    Rellena fila a fila, no solo cuando falta la columna entera: al anadir una parroquia a
+    ubicaciones.ALIAS, las filas viejas que quedaron sin ciudad se arreglan solas en la
+    siguiente corrida. Las que de verdad no tienen ciudad (una ubicacion que solo nombra
+    la provincia) se recalculan a vacio, que es lo correcto.
+    """
+    if 'location' not in df.columns or df.empty:
+        return df
+
+    df = df.copy()
+    for columna in ('ciudad', 'provincia'):
+        if columna not in df.columns:
+            df[columna] = ''
+
+    location = df['location'].fillna('')
+    pendientes = (df['ciudad'].fillna('') == '') & (location != '')
+    if not pendientes.any():
+        return df
+
+    pares = location[pendientes].map(ubicaciones.normalizar)
+    df.loc[pendientes, 'ciudad'] = [c for c, _ in pares]
+    df.loc[pendientes, 'provincia'] = [p for _, p in pares]
+    return df
+
+
+def _asegurar_columnas(df, columnas=COLUMNAS_HISTORICO):
     """Crea vacias las columnas que falten, avisando.
 
     buscar() descarta las columnas 100% vacias de cada sitio, asi que el DataFrame final
@@ -48,6 +86,10 @@ def _asegurar_columnas(df, columnas=COLUMNAS_CLAVE):
     if faltantes:
         print(f"   [AVISO] faltan columnas {', '.join(faltantes)}: se tratan como vacias")
         df = df.assign(**{c: '' for c in faltantes})
+
+    if 'date_posted' in df.columns:
+        df['date_posted'] = pd.to_datetime(df['date_posted'], errors='coerce')
+        df['date_posted'] = df['date_posted'].dt.strftime('%Y-%m-%d')
     return df
 
 
@@ -82,6 +124,7 @@ def actualizar(df, busqueda, ruta=RUTA):
     if viejo.empty:
         nuevos = df
     else:
+        viejo = _rellenar_ubicacion(viejo)
         viejo = _asegurar_columnas(viejo)
         # Solo bloquea lo visto hace poco: pasado el plazo, un repost vuelve a ser noticia.
         vigente = _vigentes(viejo)
@@ -102,7 +145,22 @@ def actualizar(df, busqueda, ruta=RUTA):
     pd.concat([viejo, nuevos], ignore_index=True).to_csv(
         tmp, index=False, encoding='utf-8-sig'
     )
-    os.replace(tmp, ruta)
+
+    try:
+        os.replace(tmp, ruta)
+    except PermissionError:
+        # Windows bloquea el archivo mientras Excel o LibreOffice lo tienen abierto, y
+        # os.replace revienta con un traceback crudo que no dice ni cual es el archivo.
+        #
+        # Se falla a proposito en vez de seguir: la tarea agendada corre sin que nadie
+        # mire la consola, y solo una excepcion la deja marcada en rojo en el Programador
+        # de tareas. Nada se pierde, porque al no escribirse el historico estas ofertas
+        # siguen contando como no vistas y volveran a salir en la proxima corrida.
+        os.remove(tmp)
+        raise RuntimeError(
+            f"no se pudo actualizar {ruta}: esta abierto en otra aplicacion"
+        )
+
     return nuevos
 
 

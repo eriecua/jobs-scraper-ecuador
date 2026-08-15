@@ -4,5 +4,8 @@ REM El Python 3.14 del sistema no sirve: jobspy pinea numpy==1.26.3, sin wheel p
 setlocal
 pushd "%~dp0"
 uv run --python 3.12 --with-requirements requirements.txt --no-project python main.py %*
+REM Sin guardar el codigo aqui, el .cmd devuelve el de 'endlocal' y todo parece ir bien.
+set CODIGO=%ERRORLEVEL%
+
 popd
-endlocal
+endlocal & exit /b %CODIGO%
