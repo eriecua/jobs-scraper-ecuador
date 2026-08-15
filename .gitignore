@@ -11,3 +11,7 @@ reporte_*.xlsx
 # Entornos virtuales
 .venv/
 venv/
+
+# Permisos locales de Claude Code (de esta maquina, no del proyecto).
+# .claude/agents/ SI se versiona: es configuracion del repo.
+.claude/settings.local.json
