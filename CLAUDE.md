@@ -66,13 +66,19 @@ Consecuencias, antes de diseñar nada encima:
 | Qué | Dónde |
 |---|---|
 | Ciudades del diario | `CIUDADES` en `main.py` **y** `SLUGS_UBICACION` en `computrabajo.py` |
-| Términos del índice de compatibilidad | `NUCLEO` / `DESEABLES` / `EXCLUIDOS` en `perfil.py` |
+| Términos del índice de compatibilidad | `INTERES` / `DESEABLES` (ordenan) y `EXCLUIDOS` / `FAMILIAS_EXCLUIDAS` (quitan) en `perfil.py` |
 | Familias de puesto del gráfico | `FAMILIAS` en `reporte.py` |
 | Descartar la descripción | `DESCARTAR_DESCRIPCION` en `buscador.py` |
 
 Añadir una ciudad exige tocar **dos** archivos. Computrabajo no entiende `"Quito, Ecuador"`:
 su ruta es `pichincha-en-quito`, y un slug inválido devuelve **200 con cero ofertas sin
 dar error**, así que hay que comprobarlo contra el sitio.
+
+## Git
+
+El repo vive en esta carpeta (`git init` hecho aquí, no en `Proyectos varios`, que
+arrastra `node_modules` y cosas ajenas). El `.git` de la carpeta padre está **vacío** y no
+funciona: ignóralo.
 
 ## Decisiones ya tomadas
 

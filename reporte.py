@@ -10,6 +10,7 @@ Por eso todo el HTML de aqui usa tablas con estilos en linea: nada de flexbox, g
 """
 import html
 import unicodedata
+from collections import Counter
 from datetime import date
 
 import pandas as pd
@@ -274,8 +275,8 @@ def _listado(df):
 
     for ciudad in ciudades:
         grupo = df[df['ciudad'] == ciudad]
-        # Lo mas compatible primero; a igual puntaje, lo mas reciente. Nada se oculta:
-        # el puntaje ordena, no filtra.
+        # Las que tocan tus terminos arriba; el resto debajo por fecha. El puntaje ordena,
+        # no filtra: las de 0 siguen ahi, solo que despues.
         criterios = ['puntaje'] + (['date_posted'] if 'date_posted' in grupo.columns else [])
         grupo = grupo.sort_values(criterios, ascending=False, na_position='last')
 
@@ -321,6 +322,37 @@ def _listado(df):
     return ''.join(bloques)
 
 
+def _pie_ocultadas(no_ofertas, motivos):
+    """Dice cuantas ofertas se ocultaron y por que termino exacto.
+
+    Es lo que evita que el filtro sea una caja negra: viendo que 'comercial' recorta 37
+    ofertas se puede decidir con criterio si esa palabra sobra en EXCLUIDOS.
+    """
+    excluidas = sum(motivos.values())
+    if not (excluidas or no_ofertas):
+        return ''
+
+    lineas = []
+    if excluidas:
+        desglose = ' · '.join(f'{t} {n}' for t, n in motivos.most_common(6))
+        resto = len(motivos) - 6
+        if resto > 0:
+            desglose += f' · otros {resto}'
+        lineas.append(f'<b>{excluidas}</b> por tus exclusiones — {html.escape(desglose)}')
+    if no_ofertas:
+        lineas.append(f'<b>{no_ofertas}</b> que no describen un puesto '
+                      f'(tipo "Trabaja con nosotros")')
+
+    return (
+        f'<div style="font-size:11px;color:{GRIS};padding-top:16px;'
+        f'border-top:1px solid {GRIS_BORDE};margin-top:22px;line-height:1.6">'
+        f'Se ocultaron {excluidas + no_ofertas} publicaciones:<br>'
+        + '<br>'.join(f'&nbsp;&nbsp;{l}' for l in lineas) +
+        '<br>Todas siguen en el CSV adjunto. Para cambiar esto, edita '
+        '<code>EXCLUIDOS</code> en perfil.py.</div>'
+    )
+
+
 def construir(nuevos, horas=24):
     """Devuelve (asunto, cuerpo_html) del reporte diario.
 
@@ -329,11 +361,20 @@ def construir(nuevos, horas=24):
     """
     df = nuevos.copy()
 
-    ocultas = 0
+    # Se guarda POR QUE se oculto cada fila, para poder decirlo al pie del correo. Sin
+    # eso, el filtro es una caja negra y no hay forma de saber que se esta perdiendo.
+    no_ofertas = 0
+    motivos_exclusion = Counter()
+
     if len(df) and 'title' in df.columns:
         real = df['title'].map(es_oferta_real)
-        ocultas = int((~real).sum())
+        no_ofertas = int((~real).sum())
         df = df[real]
+
+        familias = df['title'].map(familia_puesto)
+        motivos = [perfil.excluir(t, f) for t, f in zip(df['title'], familias)]
+        motivos_exclusion.update(m for m in motivos if m)
+        df = df[[m is None for m in motivos]]
 
     total = len(df)
     fecha = date.today().strftime('%d/%m/%Y')
@@ -396,13 +437,7 @@ def construir(nuevos, horas=24):
 
     partes.append(_listado(df))
 
-    if ocultas:
-        partes.append(
-            f'<div style="font-size:11px;color:{GRIS};padding-top:18px;'
-            f'border-top:1px solid {GRIS_BORDE};margin-top:20px">'
-            f'Se ocultaron {ocultas} publicaciones que no describen un puesto '
-            f'(tipo "Trabaja con nosotros"). Siguen en el CSV adjunto.</div>'
-        )
+    partes.append(_pie_ocultadas(no_ofertas, motivos_exclusion))
 
     partes.append('</div>')
     return asunto, '\n'.join(partes)

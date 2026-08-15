@@ -122,10 +122,14 @@ Las tres listas que deciden el puntaje de compatibilidad. **Es lo que más vas a
 según vayas viendo los correos, irás afinando qué te interesa y qué no.
 
 ```python
-NUCLEO    = {'analista': 30, 'datos': 30, ...}   # sin uno de estos, la oferta saca 0
-DESEABLES = {'python': 15, 'sql': 15, ...}       # suman, pero solos no valen
-EXCLUIDOS = ['ventas', 'chofer', ...]            # descartan la oferta
+INTERES   = {'analista': 30, 'datos': 30, ...}   # suben la oferta, NO la filtran
+DESEABLES = {'python': 15, 'sql': 15, ...}       # herramientas, suman encima
+EXCLUIDOS = ['ventas', 'sales', 'chofer', ...]   # vetan la oferta entera
+FAMILIAS_EXCLUIDAS = []                          # categorias enteras: 'Ventas', ...
 ```
+
+Escribe cada término como **palabra completa**: `estadistic` no coincide con
+"estadística".
 
 Después de cambiarlas, comprueba el efecto sobre las ofertas que ya tienes:
 
@@ -310,42 +314,61 @@ Tres cosas que se ajustan a mano en `reporte.py`:
 
 ## Índice de compatibilidad (`perfil.py`)
 
-Cada oferta saca de 0 a 100 según lo que dice su **título**. El puntaje **ordena** la
-lista, nunca la filtra: nada se oculta por puntuar bajo.
+Dos mecanismos con papeles **distintos**, y no conviene confundirlos:
 
-Se calcula solo con el título a propósito. Únicamente el 26% de las ofertas trae
-descripción (y toda de Indeed), así que puntuar con ella dejaría a ciegas 3 de cada 4.
+| | Listas | Qué hacen |
+|---|---|---|
+| **Ordenan** | `INTERES`, `DESEABLES` | Suben la oferta en la lista. Nunca la eliminan. |
+| **Quitan** | `EXCLUIDOS`, `FAMILIAS_EXCLUIDAS` | Vetan la oferta entera. |
 
-Tres listas, y es lo único que se edita:
-
-| Lista | Qué hace |
+| Lista | Qué contiene |
 |---|---|
-| `NUCLEO` | De qué va el puesto (`analista` 30, `datos` 30, `business intelligence` 30…). **Sin al menos uno, la oferta saca 0.** |
-| `DESEABLES` | Suman encima (`python` 15, `sql` 15, `power bi` 15…), pero solos no valen nada. |
-| `EXCLUIDOS` | Temas que no te interesan (`ventas`, `chofer`, `call center`…). Mandan sobre todo: la oferta saca 0. |
+| `INTERES` | De qué va el puesto que buscas (`analista` 30, `datos` 30, `business intelligence` 30…). **No es obligatorio**: una oferta sin ninguno sale igual, solo que más abajo. |
+| `DESEABLES` | Herramientas que suman encima (`python` 15, `sql` 15, `power bi` 15…). |
+| `EXCLUIDOS` | Temas que no quieres ver (`ventas`, `sales`, `comercial`, `chofer`…). Vetan la oferta. |
+| `FAMILIAS_EXCLUIDAS` | Categorías enteras a descartar (`'Ventas'`, `'Seguridad'`…), usando las `FAMILIAS` de `reporte.py`. Vacía por defecto. |
 
-El término más fuerte del núcleo cuenta entero y los demás a mitad, para que
-"Analista de Datos" no se dispare solo por decir dos palabras del mismo tema.
+### Por qué el interés no filtra
 
-Ejemplos reales de tu histórico:
+Antes `INTERES` se llamaba `NUCLEO` y era obligatorio. Medido sobre el histórico, eso
+mandaba a 0 el **68%** de las ofertas y enterraba cosas que sí servían:
 
 ```
-72  Analista en Business Intelligence (BI) / Analista de Inteligencia de Negocios
-57  Data Analyst BI | Medios Digitales y Publicidad
-45  Analista de datos
-30  Analista de Inventarios
- 0  Ejecutivo de Ventas          (excluido)
+JEFE UNIDAD DE ESTADÍSTICA     ← estadística
+Database Consultant            ← datos
+Oficial de cumplimiento uafe
 ```
 
-Los términos que coincidieron se muestran bajo cada oferta en el correo, para que veas
-por qué puntuó así y puedas corregir las listas.
+En una búsqueda dirigida (`.\scrap "Analista de Datos"`) el filtro **ya lo hizo el propio
+sitio**, así que exigirlo otra vez no aporta. En el diario solo servía para perder ofertas
+sin saber cuáles. Ahora el interés ordena y solo `EXCLUIDOS` quita.
 
-`NIVELES` etiqueta *Junior / Senior / Jefatura / Prácticas* cuando el título lo dice, pero
-**no suma ni resta**: muchos títulos no mencionan el nivel y castigarlos por callarlo
-sería inventar información.
+### Qué se está ocultando
 
-> Los puntajes son relativos, no una nota sobre 100. En la práctica una oferta muy buena
-> ronda 45-72; llegar a 100 exigiría que el título mencionara media docena de términos.
+El pie del correo lo dice siempre, con el término responsable y su recuento:
+
+```
+Se ocultaron 104 publicaciones:
+   97 por tus exclusiones — comercial 37 · ventas 25 · sales 11 · vendedor 7 · ...
+    7 que no describen un puesto ("Trabaja con nosotros")
+```
+
+Así ves qué palabra está recortando y cuánto, y puedes decidir con criterio si sobra.
+Todas siguen en el CSV adjunto.
+
+### Detalles que muerden
+
+- **Los términos se comparan como palabra completa.** Una raíz como `estadistic` **no
+  coincide nunca** con "estadística": hay que escribir cada forma. Por eso `bi` no salta
+  dentro de "combinado" ni `sales` dentro de "Salesforce".
+- **El término más fuerte de `INTERES` cuenta entero y los demás a mitad**, para que
+  "Analista de Datos" no se dispare solo por decir dos palabras del mismo tema.
+- **`NIVELES` es solo etiqueta** (*Junior / Senior / Jefatura / Prácticas*): no suma ni
+  resta, porque muchos títulos no mencionan el nivel y castigarlos por callarlo sería
+  inventar información.
+- **Los gráficos cuentan lo que se muestra**, no el total bruto, para que los números de
+  arriba cuadren con la lista de abajo.
+- Los puntajes son relativos, no una nota sobre 100. Una oferta muy buena ronda 45-72.
 
 ### Credenciales
 
