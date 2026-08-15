@@ -37,33 +37,18 @@ El adjunto es el CSV con todo.
 distinguirlo, abre el Programador de tareas y mira el último resultado, o córrelo a mano
 con `.\scrap_diario.cmd` y lee el código de salida.
 
-### 2. La ventana (búsquedas puntuales)
+### 2. La línea de comandos (búsquedas puntuales)
+
+Para buscar algo concreto fuera del horario del diario:
 
 ```powershell
-.\scrap_ventana.cmd
+.\scrap "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 50
 ```
 
-Se abre una ventana con los campos de la búsqueda. Rellenas, das a **Buscar** y ves el
-avance en el panel negro, igual que en la terminal.
+Las opciones están en la tabla de la sección **Uso**, más abajo.
 
-- **Puesto** — vacío trae todos los puestos de la ubicación.
-- **Ubicación** — el desplegable trae las ciudades ya configuradas, pero puedes escribir
-  cualquier otra.
-- **Resultados** — cuántos **por sitio**, no en total.
-- **Últimas horas** — vacío = sin límite de fecha.
-- **Detener** — corta la búsqueda a medias sin cerrar la ventana.
-- **Abrir carpeta data** — te lleva a los CSV generados.
-
-Abajo del todo aparece el resultado: *Listo*, *Fallaron todos los sitios* o
-*No se pudo enviar el correo*.
-
-> La ventana **no modifica ninguna configuración**: solo arma la búsqueda y se la pasa al
-> scraper, igual que si escribieras el comando. Para cambiar parámetros de forma
-> permanente, mira la sección de configuración más abajo.
-
-### 3. La línea de comandos
-
-Lo mismo que la ventana pero escribiendo. Es la vía que usan las tareas agendadas.
+> Hubo una ventana gráfica para esto. Se retiró el 15/08/2026 porque no funcionaba como
+> se esperaba. Cómo estaba hecha y cómo recuperarla: `legacy/NOTA-ventana-tkinter.md`.
 
 ### Qué hacer si algo falla
 
@@ -205,7 +190,6 @@ Cada uno hace un solo trabajo:
 | `perfil.py` | Puntúa cada oferta contra lo que buscas |
 | `reporte.py` | Arma el correo con los gráficos |
 | `correo.py` | Lo envía por Gmail |
-| `ventana.py` | Ventana para lanzar búsquedas sin escribir el comando |
 
 ## Salida e histórico
 
@@ -451,6 +435,9 @@ Corre aunque la terminal esté cerrada, siempre que el PC esté encendido.
 Versión anterior: reportes Excel y análisis (`generar_excel.py`, `analisis.py`,
 `config.py`, `scraper.py`, `buscar_todo_ecuador.py`). Fuera del MVP, se conserva por si
 se retoma.
+
+`NOTA-ventana-tkinter.md` documenta la ventana gráfica que se retiró: cómo estaba hecha,
+qué quedó verificado y el comando exacto para recuperar su código desde git.
 
 `legacy/scraper_computrabajo.py` fue **promovido** a `computrabajo.py` en la raíz y
 adaptado a la forma de salida de jobspy. La copia de `legacy/` queda como estaba y ya no

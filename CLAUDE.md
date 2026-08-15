@@ -8,13 +8,10 @@ diario por correo. El uso detallado está en `README.md`; aquí solo lo que muer
 ```powershell
 .\scrap.cmd "Data Analyst"     # búsqueda suelta
 .\scrap_diario.cmd             # reporte diario por correo
-.\scrap_ventana.cmd            # ventana tkinter para lanzar búsquedas
 ```
 
-`ventana.py` es **solo un lanzador**: arma los argumentos y ejecuta `main.py` como
-subproceso. No edita ningún archivo del proyecto — decisión deliberada, un programa que
-reescribe su propio código puede dejarlo roto. Los parámetros se cambian editando las
-constantes (ver tabla más abajo).
+La tarea `ScraperEmpleos` lanza el diario a las 08:00, 14:00 y 20:00 vía
+`scrap_diario_oculto.vbs`, que lo corre sin ventana y propaga el código de salida.
 
 Desde **PowerShell o cmd**, no desde Git Bash (la invocación del `.cmd` falla ahí).
 
