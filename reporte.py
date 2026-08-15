@@ -1,12 +1,11 @@
-r"""Construye el correo diario: graficos de barras y listado de ofertas.
+r"""Construye el correo diario: clasifica las ofertas y arma el cuerpo HTML.
 
-Por que barras en HTML y no imagenes: un correo no ejecuta JavaScript ni renderiza SVG,
-y un PNG tiene tamano fijo (se lee mal en el celular y arrastra su fondo blanco al modo
-oscuro). Una barra hecha con una celda de tabla y un color de fondo se ve igual en Gmail
-web, Gmail movil y Outlook, se reajusta al ancho y admite links al lado.
+Aqui vive QUE se dice: como se agrupan los titulos en familias, que publicaciones no son
+ofertas de verdad, en que orden va cada cosa y que se oculta. COMO se pinta una barra, un
+KPI o una insignia esta en graficos.py, que no sabe nada de empleos.
 
-Por eso todo el HTML de aqui usa tablas con estilos en linea: nada de flexbox, grid,
-<style> en el head, SVG ni imagenes.
+El HTML de aqui tambien usa tablas con estilos en linea: un correo no admite flexbox,
+grid, <style> en el head, SVG ni imagenes.
 """
 import html
 import unicodedata
@@ -15,45 +14,14 @@ from datetime import date
 
 import pandas as pd
 
+import graficos
 import perfil
+import ubicaciones
+from graficos import AZUL, FONDO, GRIS, GRIS_BORDE, TEXTO, VERDE
 
-# Paleta con contraste suficiente en fondo claro y oscuro.
-AZUL = '#2563eb'
-AZUL_SUAVE = '#dbeafe'
-VERDE = '#059669'
-GRIS = '#6b7280'
-GRIS_BORDE = '#e5e7eb'
-TEXTO = '#111827'
-FONDO = '#ffffff'
-
-MAX_BARRAS = 8  # mas de esto y el grafico se vuelve una lista larga
-
-# Ciudades de Ecuador que se buscan en CUALQUIER parte de la ubicacion: LinkedIn antepone
-# la parroquia ('19 de Marzo, Esmeraldas, Ecuador'), asi que mirar solo el primer
-# componente daba categorias como 'Eloy Alfaro' o 'c'.
-CIUDADES = [
-    'quito', 'guayaquil', 'cuenca', 'santo domingo', 'ambato', 'manta', 'machala',
-    'loja', 'ibarra', 'riobamba', 'esmeraldas', 'portoviejo', 'duran', 'quevedo',
-    'milagro', 'latacunga', 'babahoyo', 'salinas', 'otavalo', 'tulcan', 'azogues',
-]
-
-# Si no aparece la ciudad, la provincia sirve de aproximacion. Se funden con la ciudad
-# (no '(prov.)' aparte) o Guayaquil saldria partido en dos barras.
-PROVINCIAS = {
-    'pichincha': 'Quito', 'guayas': 'Guayaquil', 'azuay': 'Cuenca',
-    'tungurahua': 'Ambato', 'manabi': 'Manta', 'el oro': 'Machala',
-    'imbabura': 'Ibarra', 'chimborazo': 'Riobamba', 'loja': 'Loja',
-    'santo domingo de los tsachilas': 'Santo Domingo', 'cotopaxi': 'Latacunga',
-    'los rios': 'Babahoyo', 'santa elena': 'Salinas', 'carchi': 'Tulcan',
-    'canar': 'Azogues',
-}
-
-# Indeed abrevia la provincia a una letra: 'Eloy Alfaro, G, EC'.
-CODIGOS_INDEED = {
-    'p': 'Quito', 'g': 'Guayaquil', 'a': 'Cuenca', 't': 'Ambato',
-    'm': 'Manta', 'o': 'Machala', 'i': 'Ibarra', 'h': 'Riobamba',
-    'l': 'Loja', 'sd': 'Santo Domingo', 'c': 'Latacunga', 'r': 'Babahoyo',
-}
+# Las tablas de ciudades, provincias y abreviaturas de Indeed vivian aqui. Se mudaron a
+# ubicaciones.py: el mismo dato hace falta ahora en el CSV, y tenerlo en dos sitios
+# garantizaba que el correo y el archivo acabaran diciendo cosas distintas.
 
 # Familias de puesto. El orden importa: gana la primera que coincida, asi que las mas
 # especificas van antes que las genericas ('desarrollador' antes que 'ingeniero').
@@ -116,7 +84,12 @@ OTROS = 'Otros'
 
 # Cajones de sastre: se muestran, pero nunca por delante de una categoria de verdad,
 # aunque tengan mas ofertas.
-AL_FINAL = (OTROS, 'Otras', 'Sin ubicacion')
+AL_FINAL = (OTROS, 'Sin ubicacion')
+
+# Sufijo de las ubicaciones de las que solo se supo la provincia ('Pichincha (prov.)').
+# No es un cajon fijo como los de arriba: hay una etiqueta distinta por provincia, asi que
+# se reconocen por el sufijo y no por una lista.
+SUFIJO_PROVINCIA = ' (prov.)'
 
 # Titulos que LinkedIn acepta pero no describen un puesto. Son publicaciones reales
 # (spam o perezosas), no un fallo del scraper: se ocultan del reporte, no del CSV.
@@ -135,34 +108,13 @@ def _norm(texto):
 
 
 def ciudad_normalizada(location):
-    """Devuelve una ciudad presentable a partir de la ubicacion cruda del sitio.
+    """Etiqueta de ciudad presentable a partir de la ubicacion cruda del sitio.
 
-    Cada sitio la escribe distinto ('Quito, Pichincha, Ecuador', 'Quito, P, EC',
-    'Quito, Pichincha'), y LinkedIn a veces manda la parroquia. Sin esto el grafico sale
-    con categorias como 'c', 'G' o 'Eloy Alfaro'.
+    La logica esta en ubicaciones.py; aqui solo se convierte el par (ciudad, provincia)
+    en la etiqueta que va en el grafico. Se mantiene esta funcion porque es la que usa el
+    comando de comprobacion del README.
     """
-    n = _norm(location).strip()
-    if not n or n == 'nan':
-        return 'Sin ubicacion'
-
-    if 'desde casa' in n or 'remote' in n or 'remoto' in n:
-        return 'Remoto'
-
-    for ciudad in CIUDADES:
-        if ciudad in n:
-            return ciudad.title()
-
-    for provincia, capital in PROVINCIAS.items():
-        if provincia in n:
-            return capital
-
-    # Ultimo recurso: la abreviatura de provincia de Indeed, siempre el penultimo campo.
-    partes = [p.strip() for p in n.split(',')]
-    if len(partes) >= 2 and partes[-1] in ('ec', 'ecuador'):
-        if partes[-2] in CODIGOS_INDEED:
-            return CODIGOS_INDEED[partes[-2]]
-
-    return 'Otras'
+    return ubicaciones.etiqueta(*ubicaciones.normalizar(location))
 
 
 def familia_puesto(titulo):
@@ -182,95 +134,34 @@ def es_oferta_real(titulo):
     return not any(frase in n for frase in NO_OFERTAS)
 
 
-def _barra(etiqueta, valor, maximo, color=AZUL):
-    """Una fila del grafico: etiqueta, barra proporcional y numero."""
-    # El ancho es relativo al maximo de la serie, no al total: con 14/6/3 la barra mas
-    # larga llena la fila y las demas se leen en proporcion a ella.
-    ancho = max(2, round(100 * valor / maximo)) if maximo else 2
-    return (
-        '<tr>'
-        f'<td style="padding:3px 10px 3px 0;font-size:13px;color:{TEXTO};'
-        f'white-space:nowrap;vertical-align:middle">{html.escape(str(etiqueta))}</td>'
-        '<td style="width:99%;padding:3px 0;vertical-align:middle">'
-        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
-        'style="width:100%;table-layout:fixed">'
-        f'<tr><td style="width:{ancho}%;background-color:{color};height:14px;'
-        f'border-radius:3px;font-size:0;line-height:14px">&nbsp;</td>'
-        '<td style="font-size:0;line-height:14px">&nbsp;</td></tr>'
-        '</table></td>'
-        f'<td style="padding:3px 0 3px 10px;font-size:13px;font-weight:bold;'
-        f'color:{TEXTO};text-align:right;vertical-align:middle">{valor}</td>'
-        '</tr>'
-    )
+def _es_cajon(nombre):
+    """True si la categoria es un cajon de sastre y no una ciudad o familia de verdad."""
+    return nombre in AL_FINAL or str(nombre).endswith(SUFIJO_PROVINCIA)
 
 
 def _postergar_cajones(conteos):
-    """Manda 'Otros' / 'Otras' / 'Sin ubicacion' al final, conservando el resto del orden."""
-    presentes = [c for c in AL_FINAL if c in conteos.index]
+    """Manda los cajones de sastre al final, conservando el resto del orden."""
+    presentes = [c for c in conteos.index if _es_cajon(c)]
     if not presentes:
         return conteos
     return pd.concat([conteos.drop(presentes), conteos[presentes]])
 
 
-def _grafico(titulo, conteos, color=AZUL, limite=MAX_BARRAS):
-    """Bloque de titulo + barras a partir de un Series de conteos ya ordenado."""
-    if not len(conteos):
-        return ''
+def _grafico(titulo, conteos, color=AZUL, limite=graficos.MAX_BARRAS):
+    """Grafico de barras, con los cajones de sastre mandados al final.
 
-    serie = _postergar_cajones(conteos).head(limite)
-    maximo = int(serie.max())
-
-    filas = ''.join(_barra(k, int(v), maximo, color) for k, v in serie.items())
-    resto = len(conteos) - len(serie)
-    pie = (f'<div style="font-size:11px;color:{GRIS};padding-top:4px">'
-           f'+{resto} categorias mas</div>') if resto > 0 else ''
-
-    return (
-        f'<div style="margin:22px 0 0">'
-        f'<div style="font-size:11px;font-weight:bold;letter-spacing:.08em;'
-        f'color:{GRIS};text-transform:uppercase;padding-bottom:6px">'
-        f'{html.escape(titulo)}</div>'
-        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
-        'style="width:100%;border-collapse:collapse">'
-        f'{filas}</table>{pie}</div>'
-    )
-
-
-def _kpis(pares):
-    """Fila de numeros grandes: [(valor, etiqueta), ...]."""
-    celdas = ''.join(
-        f'<td style="padding:12px 8px;text-align:center;background-color:{AZUL_SUAVE};'
-        f'border-radius:6px" width="{100 // len(pares)}%">'
-        f'<div style="font-size:26px;font-weight:bold;color:{AZUL};line-height:1.1">{v}</div>'
-        f'<div style="font-size:11px;color:{GRIS};text-transform:uppercase;'
-        f'letter-spacing:.05em;padding-top:2px">{html.escape(e)}</div></td>'
-        + ('<td style="width:8px"></td>' if i < len(pares) - 1 else '')
-        for i, (v, e) in enumerate(pares)
-    )
-    return ('<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
-            f'style="width:100%;border-collapse:separate"><tr>{celdas}</tr></table>')
-
-
-def _insignia(puntaje):
-    """Color del puntaje: verde si encaja, gris si no. Mismo tamano siempre."""
-    if puntaje >= 60:
-        fondo, texto = '#059669', '#ffffff'
-    elif puntaje >= 30:
-        fondo, texto = '#d1fae5', '#065f46'
-    else:
-        fondo, texto = '#f3f4f6', GRIS
-    return (f'<span style="display:inline-block;min-width:26px;padding:1px 5px;'
-            f'background-color:{fondo};color:{texto};border-radius:4px;font-size:11px;'
-            f'font-weight:bold;text-align:center">{puntaje}</span>')
+    graficos.grafico() dibuja en el orden que le llega; el criterio es cosa de aqui.
+    """
+    return graficos.grafico(titulo, _postergar_cajones(conteos), color, limite)
 
 
 def _listado(df):
     """Las ofertas agrupadas por ciudad, con link. Es lo que hace el correo accionable."""
     bloques = []
 
-    # Las ciudades con mas ofertas primero; 'Otras' y 'Sin ubicacion' al final.
+    # Las ciudades con mas ofertas primero; los cajones de sastre al final.
     orden = df['ciudad'].value_counts()
-    postergadas = [c for c in ('Otras', 'Sin ubicacion') if c in orden.index]
+    postergadas = [c for c in orden.index if _es_cajon(c)]
     ciudades = [c for c in orden.index if c not in postergadas] + postergadas
 
     for ciudad in ciudades:
@@ -300,7 +191,7 @@ def _listado(df):
             filas.append(
                 f'<tr>'
                 f'<td style="padding:7px 8px 7px 0;border-bottom:1px solid {GRIS_BORDE};'
-                f'vertical-align:top;width:34px">{_insignia(int(fila.puntaje))}</td>'
+                f'vertical-align:top;width:34px">{graficos.insignia(int(fila.puntaje))}</td>'
                 f'<td style="padding:7px 0;border-bottom:1px solid {GRIS_BORDE};'
                 f'font-size:14px;color:{TEXTO}">{enlace}'
                 f'<div style="font-size:12px;color:{GRIS};padding-top:1px">'
@@ -356,8 +247,10 @@ def _pie_ocultadas(no_ofertas, motivos):
 def construir(nuevos, horas=24):
     """Devuelve (asunto, cuerpo_html) del reporte diario.
 
-    `nuevos` es el DataFrame de ofertas nuevas. Se le anaden al vuelo las columnas
-    'ciudad' y 'familia'; no se guardan en el CSV.
+    `nuevos` es el DataFrame de ofertas nuevas. Se trabaja sobre una copia porque aqui
+    'ciudad' se reescribe con la ETIQUETA del grafico ('Pichincha (prov.)' donde el dato
+    guardado es la ciudad vacia). Sin la copia, esa etiqueta se colaria en el CSV, que
+    debe llevar el valor crudo de ubicaciones.normalizar().
     """
     df = nuevos.copy()
 
@@ -389,8 +282,16 @@ def construir(nuevos, horas=24):
         )
         return asunto, cuerpo
 
-    df['ciudad'] = df['location'].map(ciudad_normalizada) if 'location' in df.columns \
-        else 'Sin ubicacion'
+    # buscador.py ya deja ciudad y provincia puestas; aqui solo se les da la etiqueta que
+    # va en el grafico. Recalcular desde 'location' es el respaldo para un DataFrame que
+    # no venga de buscar() (un CSV viejo, una prueba suelta).
+    if 'ciudad' in df.columns and 'provincia' in df.columns:
+        df['ciudad'] = [ubicaciones.etiqueta(c, p)
+                        for c, p in zip(df['ciudad'].fillna(''), df['provincia'].fillna(''))]
+    elif 'location' in df.columns:
+        df['ciudad'] = df['location'].map(ciudad_normalizada)
+    else:
+        df['ciudad'] = 'Sin ubicacion'
     df['familia'] = df['title'].map(familia_puesto) if 'title' in df.columns else OTROS
 
     # Compatibilidad segun perfil.py. Ordena el listado; no oculta nada.
@@ -425,8 +326,8 @@ def construir(nuevos, horas=24):
         f'<div style="font-size:12px;color:{GRIS};padding:2px 0 16px">'
         f'Ultimas {horas} horas · {fecha}</div>',
 
-        _kpis([(total, 'ofertas'), (interesantes, 'te encajan'),
-               (len(por_ciudad), 'ciudades'), (empresas, 'empresas')]),
+        graficos.kpis([(total, 'ofertas'), (interesantes, 'te encajan'),
+                       (len(por_ciudad), 'ciudades'), (empresas, 'empresas')]),
 
         _grafico('Ofertas por ciudad', por_ciudad, AZUL),
         _grafico('Que estan buscando', por_familia, VERDE),
