@@ -6,6 +6,7 @@ import pandas as pd
 from jobspy import scrape_jobs
 
 import computrabajo
+import ubicaciones
 
 # jobspy loguea a stderr por su cuenta: ni verbose=0 ni silenciar el logger "JobSpy"
 # bastan (sus loggers se crean tarde y se llaman "JobSpy:Linkedin", con dos puntos).
@@ -88,6 +89,15 @@ def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=Non
     # ordenar por date_posted revienta al comparar str con date.
     if 'date_posted' in juntos.columns:
         juntos['date_posted'] = pd.to_datetime(juntos['date_posted'], errors='coerce')
+
+    # Cada sitio escribe la ubicacion a su manera ('Quito, Pichincha, Ecuador',
+    # 'Quito, P, EC'). Se normaliza aqui, el unico punto por donde pasan los tres sitios,
+    # para que el CSV, el historico y el correo vean todos la misma ciudad. La guarda no
+    # es adorno: si ningun sitio trajo 'location', sin ella es un KeyError seco.
+    if 'location' in juntos.columns:
+        pares = juntos['location'].map(ubicaciones.normalizar)
+        juntos['ciudad'] = [c for c, _ in pares]
+        juntos['provincia'] = [p for _, p in pares]
 
     if DESCARTAR_DESCRIPCION and not con_descripcion and 'description' in juntos.columns:
         juntos = juntos.drop(columns=['description'])
