@@ -6,18 +6,21 @@ r"""MVP: convierte data/historico.csv en una base SQLite para analizar en Power 
 NO toca el scraper. Lee el CSV y escribe data/historico.db al lado. Se puede correr
 las veces que haga falta: la base se reconstruye entera cada vez.
 
-Que se esta probando con esto, antes de migrar nada:
+Escribe dos archivos con el MISMO contenido, porque cada uno sirve para algo:
 
-1. Que Power BI conecte con SQLite sin pelearse. Power BI NO trae conector nativo
-   (si para SQL Server, PostgreSQL y MySQL): hace falta un driver ODBC de terceros.
-   Si ese paso resulta doloroso, la respuesta es quedarse en CSV o mirar SQL Server
-   Express, y nos habremos ahorrado reescribir historico.py.
-2. Que la base aporte algo sobre el CSV, que Power BI ya lee al doble clic. Lo que
-   aporta son las columnas derivadas (familia, puntaje) y poder consultar sin abrir
-   el archivo que el scraper escribe.
+    data/analisis.csv   para Power BI. Lo lee al doble clic, sin drivers.
+    data/historico.db   para consultar en SQL con DB Browser for SQLite.
 
-Si las dos cosas salen bien, el siguiente paso es que historico.py escriba aqui
-directamente y el CSV quede solo como adjunto del correo.
+Por que los dos, y no solo la base: en esta maquina el ODBC de SQLite NO funciona.
+Los tres drivers estan instalados y sus DLL existen, pero cualquier conexion muere
+con 'HY000 connect failed', tambien desde PowerShell, asi que no es cosa de Power BI.
+Se probaron las tres variantes del driver y rutas con y sin espacios: todas fallan
+igual. Antes de volver a intentarlo por ahi, comprobar si falta el runtime de Visual
+C++ o si el instalador metio un DLL de 32 bits registrado como de 64.
+
+Lo que de verdad aporta esto sobre el historico.csv de siempre no es el formato: son
+las columnas derivadas -familia, puntaje, nivel, motivo_exclusion-, que en Power BI
+son segmentadores sin escribir una medida DAX. Y eso ya lo da el CSV.
 """
 import os
 import sqlite3
@@ -29,6 +32,7 @@ import reporte
 
 CSV = os.path.join('data', 'historico.csv')
 BASE = os.path.join('data', 'historico.db')
+PARA_BI = os.path.join('data', 'analisis.csv')
 
 # Solo las columnas con datos de verdad. Las medidas sobre 392 ofertas reales dicen que
 # job_level esta al 0%, min_amount/max_amount al 3% y company_industry al 3%: meterlas
@@ -67,6 +71,11 @@ def construir(csv=CSV, base=BASE):
     for columna in ('date_posted', 'visto_primera_vez'):
         df[columna] = pd.to_datetime(df[columna], errors='coerce').dt.strftime('%Y-%m-%d')
 
+    # Power BI lee este CSV al doble clic, sin drivers. Se escribe siempre porque el
+    # ODBC de SQLite fallo en esta maquina (HY000 connect failed con los tres drivers,
+    # tambien fuera de Power BI), y las columnas derivadas son el 90% del valor.
+    df.to_csv(PARA_BI, index=False, encoding='utf-8-sig')
+
     with sqlite3.connect(base) as conexion:
         df.to_sql('ofertas', conexion, if_exists='replace', index=False)
         # Aqui esta la idea de fondo: la deduplicacion deja de ser codigo y pasa a ser
@@ -98,7 +107,9 @@ CONSULTAS = [
 
 if __name__ == '__main__':
     df, base = construir()
-    print(f'[OK] {len(df)} ofertas en {base} (tabla "ofertas", {len(df.columns)} columnas)')
+    print(f'[OK] {len(df)} ofertas, {len(df.columns)} columnas')
+    print(f'     {PARA_BI}  <- para Power BI (Obtener datos > Texto/CSV)')
+    print(f'     {base}  <- para consultar en SQL (DB Browser for SQLite)')
 
     with sqlite3.connect(base) as conexion:
         for titulo, sql in CONSULTAS:
