@@ -406,13 +406,41 @@ Si faltan las credenciales, en cambio, ni siquiera scrapea — así no se pierde
 
 Una vez que llegue el correo, registrar la tarea diaria a las 08:00:
 
+La tarea `ScraperEmpleos` corre **tres veces al día (08:00, 14:00 y 20:00)** y **sin abrir
+ventana**. Se creó así:
+
 ```powershell
-schtasks /create /tn "ScraperEmpleos" /tr "'$PWD\scrap_diario.cmd'" /sc daily /st 08:00
-schtasks /query /tn "ScraperEmpleos" /fo list /v    # confirmar que la ruta quedó absoluta
+$dir = "C:\Users\MSI ERICK\Desktop\Proyectos varios\scrapper_pruebas\test_python\linkendin_jobs_scrapper"
+$accion = New-ScheduledTaskAction -Execute "wscript.exe" `
+          -Argument "`"$dir\scrap_diario_oculto.vbs`"" -WorkingDirectory $dir
+$horas = @((New-ScheduledTaskTrigger -Daily -At 08:00),
+           (New-ScheduledTaskTrigger -Daily -At 14:00),
+           (New-ScheduledTaskTrigger -Daily -At 20:00))
+Set-ScheduledTask -TaskName "ScraperEmpleos" -Action $accion -Trigger $horas
 ```
 
-Corre aunque la terminal esté cerrada, siempre que el PC esté encendido. Para probar la
-tarea sin esperar: `schtasks /run /tn "ScraperEmpleos"`.
+Para **cambiar las horas**, repite ese bloque con las que quieras. Para ver cómo está:
+
+```powershell
+Get-ScheduledTaskInfo -TaskName "ScraperEmpleos"      # ultima ejecucion y resultado
+schtasks /run /tn "ScraperEmpleos"                    # probarla sin esperar
+```
+
+**Por qué un `.vbs` y no el `.cmd` directamente:** un `.cmd` abre siempre su ventana de
+consola, aunque lo lance el Programador de tareas. `scrap_diario_oculto.vbs` lo arranca
+oculto y **devuelve su código de salida**, para que "Último resultado" siga diciendo si
+fue 0, 1 o 2. Sin eso, ocultar la ventana costaría perder el diagnóstico.
+
+Ajustes que lleva la tarea:
+
+| Ajuste | Valor | Por qué |
+|---|---|---|
+| `DisallowStartIfOnBatteries` | `False` | Por defecto Windows no ejecuta tareas con el portátil a batería |
+| `StartWhenAvailable` | `True` | Si el PC estaba apagado a esa hora, corre en cuanto arranque |
+| `ExecutionTimeLimit` | 1 hora | Si se cuelga, no queda un proceso zombi |
+| `MultipleInstances` | `IgnoreNew` | Si una corrida se alarga, la siguiente no se solapa |
+
+Corre aunque la terminal esté cerrada, siempre que el PC esté encendido.
 
 > **Por qué no en la nube:** los runners de GitHub Actions usan IPs de datacenter que
 > LinkedIn bloquea con 429, y `historico.csv` obligaría a commitear estado en cada
