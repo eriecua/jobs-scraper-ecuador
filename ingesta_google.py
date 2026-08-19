@@ -35,6 +35,21 @@ COLUMNAS_MINIMAS = ('id', 'site', 'title', 'company', 'location', 'date_posted',
 # sabe que es Ecuador es ubicaciones.py, y vive de este lado.
 DESCARTAR_FUERA_DE_ECUADOR = True
 
+# Lo que se descarta son los paises que Google cuela de verdad, NO todo lo que
+# ubicaciones.py no reconozca. La diferencia importa: CANTONES solo tiene 24 de los 221
+# cantones del pais, asi que "no lo reconozco" y "no es Ecuador" son cosas distintas.
+# Ya paso: la primera version tiraba Sangolqui (canton Ruminahui, Pichincha) por no
+# estar en la tabla. Ante la duda entra: una oferta de mas se ve y se ignora, una de
+# menos no se ve nunca.
+PAISES_AJENOS = (
+    'republica dominicana', 'punta cana', 'santo domingo este', 'santo domingo norte',
+    'colombia', 'peru', 'venezuela', 'chile', 'argentina', 'mexico', 'panama',
+    'bolivia', 'brasil', 'uruguay', 'paraguay', 'costa rica', 'guatemala',
+    'honduras', 'nicaragua', 'salvador', 'cuba', 'puerto rico', 'espana',
+    'estados unidos', 'united states', 'bogota', 'lima', 'medellin', 'caracas',
+    'buenos aires', 'santiago de chile', 'ciudad de mexico',
+)
+
 EXIT_OK = 0
 EXIT_SIN_ARCHIVO = 1
 EXIT_ESCRITURA_FALLO = 3  # mismo codigo que main.py: el historico estaba bloqueado
@@ -64,24 +79,36 @@ def _validar(df):
 
 
 def _solo_ecuador(df):
-    """Quita las ofertas cuya ubicacion no cae en Ecuador.
+    """Quita las ofertas de otros paises, conservando lo dudoso.
 
-    ubicaciones.normalizar() ya es la tabla de cantones y provincias del pais: si no
-    reconoce ni ciudad ni provincia, es que la ubicacion no es de aqui. Se apoya en ella
-    en vez de mantener una lista de paises a mano, que habria que ir ampliando.
+    Se descarta por lista de paises ajenos, no por "ubicaciones.py no lo reconoce". Esa
+    tabla tiene 24 cantones de los 221 que hay, asi que tratar lo desconocido como
+    extranjero tira ofertas buenas: Sangolqui (canton Ruminahui) se perdio asi.
 
-    Ojo con el caso 'Remoto': normalizar() lo devuelve como ciudad, asi que pasa el
-    filtro. Es lo que se quiere; una oferta remota publicada en la busqueda de Ecuador
-    interesa aunque no diga ciudad.
+    Una ubicacion que la tabla SI reconoce se acepta sin mirar la lista, porque entonces
+    ya consta que es de aqui. 'Remoto' entra por esa via, que es lo que se quiere: una
+    oferta remota publicada en la busqueda de Ecuador interesa aunque no diga ciudad.
     """
-    reconocidas = (df['ciudad'].fillna('') != '') | (df['provincia'].fillna('') != '')
-    descartadas = df[~reconocidas]
+    location = df['location'].fillna('').map(ubicaciones._norm)
+    conocida = (df['ciudad'].fillna('') != '') | (df['provincia'].fillna('') != '')
+    ajena = location.apply(lambda t: any(p in t for p in PAISES_AJENOS))
+
+    descartadas = df[ajena & ~conocida]
     for _, fila in descartadas.iterrows():
         print(f"   [FUERA] {fila['location']!r}: no es Ecuador, se descarta "
               f"({fila['title'][:40]})")
     if len(descartadas):
         print(f"   {len(descartadas)} oferta(s) descartada(s) por estar fuera de Ecuador")
-    return df[reconocidas]
+
+    sin_ubicar = df[~ajena & ~conocida]
+    if len(sin_ubicar):
+        # No se tiran: puede ser un canton que falte en la tabla. Se avisa para poder
+        # anadirlo a ubicaciones.CANTONES si resulta que sale a menudo.
+        ubis = ', '.join(sorted(set(sin_ubicar['location']))[:5])
+        print(f"   [AVISO] {len(sin_ubicar)} oferta(s) con ubicacion no catalogada "
+              f"({ubis}): entran igual")
+
+    return df[~(ajena & ~conocida)]
 
 
 def ingerir(ruta_csv, ruta_historico=historico.RUTA):

@@ -21,6 +21,12 @@ if not exist "%GOOGLE_DIR%\pyproject.toml" (
     exit /b 1
 )
 
+REM Se borra el CSV de la corrida anterior ANTES de empezar. La ruta es fija, asi que si
+REM el scraper muere sin escribir (la tarea lo mata por tiempo, Google bloquea), el
+REM fichero viejo seguiria ahi: la ingesta lo tragaria, diria "0 nuevas" y saldria con 0.
+REM Una caida total de Google se veria exactamente igual que un dia tranquilo.
+if exist "%CSV%" del "%CSV%"
+
 echo [1/2] Raspando Google Jobs...
 pushd "%GOOGLE_DIR%"
 poetry run python -m google_jobs_scraper --export "%CSV%"
