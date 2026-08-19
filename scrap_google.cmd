@@ -1,0 +1,45 @@
+@echo off
+REM Raspa Google Jobs y mete lo nuevo en data/historico.csv.
+REM
+REM Son DOS entornos distintos a proposito:
+REM   - Google necesita Selenium y Chrome, y vive en su propio proyecto con Poetry.
+REM   - La ingesta corre aqui, con el mismo uv/Python 3.12 que el resto del scraper.
+REM Mezclarlos obligaria a meter selenium en requirements.txt, que se resuelve en cada
+REM corrida del reporte diario: si un dia no resolviera, se caeria el correo.
+REM
+REM No manda correo: escribe en el historico y el reporte diario de las 08:00 las
+REM recoge como novedades. Pensado para el Programador de tareas (02:00).
+setlocal
+pushd "%~dp0"
+
+set GOOGLE_DIR=..\..\Google Scrapper\Scrape_google_opencode
+set CSV=%TEMP%\google_jobs_export.csv
+
+if not exist "%GOOGLE_DIR%\pyproject.toml" (
+    echo [ERROR] No se encuentra el scraper de Google en "%GOOGLE_DIR%"
+    popd
+    exit /b 1
+)
+
+echo [1/2] Raspando Google Jobs...
+pushd "%GOOGLE_DIR%"
+poetry run python -m google_jobs_scraper --export "%CSV%"
+set CODIGO=%ERRORLEVEL%
+popd
+
+REM Se sigue aunque Google devuelva error: puede haber muerto a mitad y aun asi haber
+REM dejado el CSV con lo que alcanzo a raspar. Media corrida ingerida vale mas que nada.
+if not exist "%CSV%" (
+    echo [ERROR] Google no dejo ningun CSV en "%CSV%"
+    popd
+    exit /b 1
+)
+if not "%CODIGO%"=="0" echo [AVISO] Google salio con codigo %CODIGO%: se ingiere lo que haya
+
+echo [2/2] Ingiriendo en el historico...
+uv run --python 3.12 --with-requirements requirements.txt --no-project python ingesta_google.py "%CSV%"
+set CODIGO=%ERRORLEVEL%
+
+REM Sin guardar el codigo aqui, el .cmd devuelve el de 'endlocal' y todo parece ir bien.
+popd
+endlocal & exit /b %CODIGO%

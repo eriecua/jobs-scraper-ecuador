@@ -29,6 +29,12 @@ import ubicaciones
 COLUMNAS_MINIMAS = ('id', 'site', 'title', 'company', 'location', 'date_posted',
                     'job_url')
 
+# Google se toma las ciudades como una sugerencia: buscando "Santo Domingo" devuelve
+# ofertas de Republica Dominicana, y "Punta Cana" no es Ecuador por mucho que el titulo
+# diga "Ingeniero Industrial". Se descartan aqui y no en el scraper porque la tabla que
+# sabe que es Ecuador es ubicaciones.py, y vive de este lado.
+DESCARTAR_FUERA_DE_ECUADOR = True
+
 EXIT_OK = 0
 EXIT_SIN_ARCHIVO = 1
 EXIT_ESCRITURA_FALLO = 3  # mismo codigo que main.py: el historico estaba bloqueado
@@ -57,6 +63,27 @@ def _validar(df):
     return problemas
 
 
+def _solo_ecuador(df):
+    """Quita las ofertas cuya ubicacion no cae en Ecuador.
+
+    ubicaciones.normalizar() ya es la tabla de cantones y provincias del pais: si no
+    reconoce ni ciudad ni provincia, es que la ubicacion no es de aqui. Se apoya en ella
+    en vez de mantener una lista de paises a mano, que habria que ir ampliando.
+
+    Ojo con el caso 'Remoto': normalizar() lo devuelve como ciudad, asi que pasa el
+    filtro. Es lo que se quiere; una oferta remota publicada en la busqueda de Ecuador
+    interesa aunque no diga ciudad.
+    """
+    reconocidas = (df['ciudad'].fillna('') != '') | (df['provincia'].fillna('') != '')
+    descartadas = df[~reconocidas]
+    for _, fila in descartadas.iterrows():
+        print(f"   [FUERA] {fila['location']!r}: no es Ecuador, se descarta "
+              f"({fila['title'][:40]})")
+    if len(descartadas):
+        print(f"   {len(descartadas)} oferta(s) descartada(s) por estar fuera de Ecuador")
+    return df[reconocidas]
+
+
 def ingerir(ruta_csv, ruta_historico=historico.RUTA):
     """Lee el CSV de Google y anade al historico lo que no se hubiera visto ya.
 
@@ -83,6 +110,12 @@ def ingerir(ruta_csv, ruta_historico=historico.RUTA):
     pares = df['location'].map(ubicaciones.normalizar)
     df['ciudad'] = [c for c, _ in pares]
     df['provincia'] = [p for _, p in pares]
+
+    if DESCARTAR_FUERA_DE_ECUADOR:
+        df = _solo_ecuador(df)
+        if df.empty:
+            print('[AVISO] Ninguna oferta era de Ecuador: no hay nada que ingerir')
+            return df
 
     nuevos = historico.actualizar(df, 'google', ruta=ruta_historico)
     print(f'[OK] {len(df)} ofertas ({len(nuevos)} nuevas desde la ultima corrida)')
