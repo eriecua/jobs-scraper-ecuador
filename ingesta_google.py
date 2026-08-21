@@ -1,4 +1,4 @@
-r"""Mete en el historico las ofertas que raspo el scraper de Google Jobs.
+r"""Prepara para el correo diario las ofertas que raspo el scraper de Google Jobs.
 
 Google vive en otro proyecto (Google Scrapper/Scrape_google_opencode) porque necesita
 Selenium y Chrome, tarda ~10 minutos y se bloquea si se le insiste. Corre por su cuenta,
@@ -8,19 +8,26 @@ tarda segundos y es lo que de verdad importa.
     uv run --python 3.12 --with-requirements requirements.txt --no-project ^
         python ingesta_google.py ofertas_google.csv
 
-Las ofertas entran al MISMO data/historico.csv que linkedin, indeed y computrabajo, con
-site='google', y salen en el siguiente correo diario como cualquier otra novedad.
+Las ofertas acaban en el MISMO data/historico.csv que linkedin, indeed y computrabajo,
+con site='google', y salen en el siguiente correo diario como cualquier otra novedad.
+Pero no las escribe esto: las deja en un buzon y las escribe el diario. Ver abajo.
 
-Por que no manda el correo el mismo: historico.actualizar() marca las ofertas como vistas
-en cuanto escribe. Si esto avisara por su cuenta, habria dos correos; y si escribiera sin
-avisar a nadie, esas ofertas quedarian marcadas y no saldrian NUNCA. Escribir aqui y
-dejar que el diario las reporte es lo unico que las hace aparecer una vez y solo una.
+Por que esto NO escribe en el historico: historico.actualizar() marca las ofertas como
+vistas en cuanto escribe, y ejecutar_diario() arma el correo con lo que devuelve SU
+llamada, no leyendo el historico. Escribir aqui gastaba la novedad antes de que nadie
+avisara: las 71 primeras ofertas de Google entraron al CSV y no salieron en ningun
+correo.
+
+Asi que esto deja las ofertas en un buzon (data/google_pendientes.csv) y el diario las
+recoge, las suma a su propio scrape y hace UNA sola llamada a actualizar(). Una escritura,
+una marca de visto, un correo. El buzon se vacia solo cuando el diario escribio bien; si
+falla, las ofertas siguen ahi y entran en la corrida siguiente.
 """
+import os
 import sys
 
 import pandas as pd
 
-import historico
 import ubicaciones
 
 # Las que el historico necesita para deduplicar y agrupar. El CSV de Google trae ademas
@@ -49,6 +56,11 @@ PAISES_AJENOS = (
     'estados unidos', 'united states', 'bogota', 'lima', 'medellin', 'caracas',
     'buenos aires', 'santiago de chile', 'ciudad de mexico',
 )
+
+# Buzon donde se dejan las ofertas hasta que el diario las recoja. Se vacia solo cuando
+# ejecutar_diario() consiguio escribir el historico. Si el diario no corre en varios
+# dias, esto se va acumulando a proposito: mejor repetir una oferta que perderla.
+PENDIENTES = os.path.join('data', 'google_pendientes.csv')
 
 EXIT_OK = 0
 EXIT_SIN_ARCHIVO = 1
@@ -111,10 +123,38 @@ def _solo_ecuador(df):
     return df[~(ajena & ~conocida)]
 
 
-def ingerir(ruta_csv, ruta_historico=historico.RUTA):
-    """Lee el CSV de Google y anade al historico lo que no se hubiera visto ya.
+def _encolar(df, ruta=PENDIENTES):
+    """Anade las ofertas al buzon, sin repetir las que ya estuvieran esperando.
 
-    Devuelve el DataFrame de ofertas nuevas (vacio si no habia ninguna).
+    Dedup por 'id' y no por clave empresa+titulo+ciudad: de eso ya se encarga
+    historico.actualizar() cuando el diario lo recoja, y hacerlo dos veces solo esconderia
+    ofertas distintas que comparten titulo. Aqui basta con que dos corridas de Google
+    seguidas no dupliquen la misma fila.
+    """
+    os.makedirs(os.path.dirname(ruta), exist_ok=True)
+
+    if os.path.exists(ruta):
+        previo = pd.read_csv(ruta, dtype=str).fillna('')
+        df = pd.concat([previo, df], ignore_index=True)
+        df = df[~df['id'].duplicated(keep='first')]
+
+    # Atomica, como historico.actualizar: si revienta a medias, el buzon anterior queda
+    # intacto y no se pierde lo que ya esperaba.
+    tmp = ruta + '.tmp'
+    df.to_csv(tmp, index=False, encoding='utf-8-sig')
+    try:
+        os.replace(tmp, ruta)
+    except PermissionError:
+        os.remove(tmp)
+        raise RuntimeError(f"no se pudo escribir {ruta}: esta abierto en otra aplicacion")
+    return df
+
+
+def ingerir(ruta_csv, ruta_buzon=PENDIENTES):
+    """Lee el CSV de Google, lo normaliza y lo deja en el buzon del diario.
+
+    NO escribe en el historico: quien decide que es nuevo, y quien lo reporta, es
+    ejecutar_diario(). Devuelve el DataFrame completo que quedo esperando.
     """
     df = pd.read_csv(ruta_csv, dtype=str).fillna('')
     print(f"[LEIDO] {len(df)} ofertas en {ruta_csv}")
@@ -144,30 +184,31 @@ def ingerir(ruta_csv, ruta_historico=historico.RUTA):
             print('[AVISO] Ninguna oferta era de Ecuador: no hay nada que ingerir')
             return df
 
-    nuevos = historico.actualizar(df, 'google', ruta=ruta_historico)
-    print(f'[OK] {len(df)} ofertas ({len(nuevos)} nuevas desde la ultima corrida)')
-    return nuevos
+    esperando = _encolar(df, ruta_buzon)
+    print(f'[OK] {len(df)} ofertas al buzon ({len(esperando)} esperando al diario en '
+          f'{ruta_buzon})')
+    return esperando
 
 
 def main():
     if len(sys.argv) < 2:
-        print('Uso: python ingesta_google.py <csv de Google> [historico.csv]',
+        print('Uso: python ingesta_google.py <csv de Google> [buzon.csv]',
               file=sys.stderr)
         return EXIT_SIN_ARCHIVO
 
     ruta_csv = sys.argv[1]
-    ruta_historico = sys.argv[2] if len(sys.argv) > 2 else historico.RUTA
+    ruta_buzon = sys.argv[2] if len(sys.argv) > 2 else PENDIENTES
 
     try:
-        ingerir(ruta_csv, ruta_historico)
+        ingerir(ruta_csv, ruta_buzon)
     except FileNotFoundError:
         print(f'[ERROR] No existe {ruta_csv}. Corre el scraper de Google primero.',
               file=sys.stderr)
         return EXIT_SIN_ARCHIVO
     except RuntimeError as fallo:
-        # historico.actualizar() avisa asi cuando no puede escribir el CSV porque esta
-        # abierto en Excel. Nada se pierde: al no escribirse, esas ofertas siguen
-        # contando como no vistas y volveran a salir en la proxima corrida.
+        # _encolar() avisa asi cuando no puede escribir el buzon porque esta abierto en
+        # Excel. Nada se pierde: el scraper de Google volvera a traerlas manana, y lo que
+        # ya esperaba en el buzon sigue intacto porque la escritura es atomica.
         print(f'[ERROR] {fallo}', file=sys.stderr)
         return EXIT_ESCRITURA_FALLO
 

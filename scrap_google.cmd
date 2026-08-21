@@ -1,5 +1,5 @@
 @echo off
-REM Raspa Google Jobs y mete lo nuevo en data/historico.csv.
+REM Raspa Google Jobs y deja lo raspado en el buzon data/google_pendientes.csv.
 REM
 REM Son DOS entornos distintos a proposito:
 REM   - Google necesita Selenium y Chrome, y vive en su propio proyecto con Poetry.
@@ -7,8 +7,10 @@ REM   - La ingesta corre aqui, con el mismo uv/Python 3.12 que el resto del scra
 REM Mezclarlos obligaria a meter selenium en requirements.txt, que se resuelve en cada
 REM corrida del reporte diario: si un dia no resolviera, se caeria el correo.
 REM
-REM No manda correo: escribe en el historico y el reporte diario de las 08:00 las
-REM recoge como novedades. Pensado para el Programador de tareas (02:00).
+REM No manda correo NI escribe el historico: deja las ofertas en el buzon y el reporte
+REM diario de las 08:00 las recoge, las suma a su scrape y las reporta. Escribir el
+REM historico aqui las marcaba como vistas antes de que nadie avisara, y no salian nunca.
+REM Por eso esta tarea va ANTES que la del diario (07:30 vs 08:00).
 setlocal
 pushd "%~dp0"
 
@@ -42,7 +44,7 @@ if not exist "%CSV%" (
 )
 if not "%CODIGO%"=="0" echo [AVISO] Google salio con codigo %CODIGO%: se ingiere lo que haya
 
-echo [2/2] Ingiriendo en el historico...
+echo [2/2] Dejando en el buzon del diario...
 uv run --python 3.12 --with-requirements requirements.txt --no-project python ingesta_google.py "%CSV%"
 set CODIGO=%ERRORLEVEL%
 

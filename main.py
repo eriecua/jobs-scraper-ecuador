@@ -19,6 +19,7 @@ verdad esta repartido:
     correo.py       lo envia
 """
 import argparse
+import os
 import sys
 
 import pandas as pd
@@ -39,6 +40,13 @@ CIUDADES = [
 HORAS_DIARIO = 24        # ventana de la busqueda agendada
 RESULTADOS_DIARIO = 100  # por sitio y por ciudad
 ENVIAR_SI_VACIO = False  # si no hay nada nuevo, por defecto no manda correo
+
+# Buzon que deja ingesta_google.py. Google corre aparte (Selenium, ~13 min) y no puede
+# escribir el historico por su cuenta: actualizar() marca las ofertas como vistas, y el
+# correo se arma con lo que devuelve la llamada de AQUI, no leyendo el CSV. Si Google
+# escribiera antes, sus ofertas quedarian marcadas sin que nadie las reporte, que es
+# justo lo que pasaba con las 71 primeras.
+PENDIENTES_GOOGLE = os.path.join('data', 'google_pendientes.csv')
 
 # Codigos de salida, para que la tarea agendada distinga que paso.
 EXIT_OK = 0
@@ -69,6 +77,74 @@ def _registrar(df, etiqueta):
     return nuevos
 
 
+def _google_pendientes(ruta=PENDIENTES_GOOGLE):
+    """Reclama el buzon y devuelve lo que Google dejo esperando.
+
+    Reclamar = renombrarlo antes de leerlo, no leerlo y ya. Google arranca a las 07:30 y
+    tarda ~13 min, asi que normalmente termina mucho antes que el diario de las 08:00 --
+    pero la tarea lleva StartWhenAvailable, y si el PC arranca tarde su ingesta puede caer
+    DENTRO de esta corrida. Sin reclamar:
+
+        08:00:01  el diario lee el buzon        -> [A, B]
+        08:00:20  Google anade C                -> [A, B, C]
+        08:00:45  el diario borra el buzon      -> C desaparece, sin error ni aviso
+
+    Renombrando primero, lo que Google escriba va a un buzon nuevo y entra manana.
+
+    El .enproceso que quedo de una corrida anterior tambien se recoge: si el historico
+    estaba bloqueado (Excel abierto), esas ofertas se reclamaron y nunca se escribieron.
+    Sin esto, reclamar cambiaria una carrera rara por una perdida frecuente.
+    """
+    reclamado = ruta + '.enproceso'
+
+    piezas, leidos = [], []
+    for origen in (reclamado, ruta):  # el reclamado primero: es lo mas viejo
+        if not os.path.exists(origen):
+            continue
+        try:
+            piezas.append(pd.read_csv(origen, dtype=str).fillna(''))
+            leidos.append(origen)
+        except Exception as fallo:
+            # Un buzon ilegible no puede tumbar el correo: es un extra, no el plato
+            # principal. No se borra, para poder mirarlo despues.
+            print(f'   [AVISO] no se pudo leer {origen} ({fallo}): se sigue sin eso')
+
+    if not piezas:
+        return pd.DataFrame()
+
+    df = pd.concat(piezas, ignore_index=True)
+    df = df[~df['id'].duplicated(keep='first')]
+
+    try:
+        df.to_csv(reclamado, index=False, encoding='utf-8-sig')
+        if ruta in leidos:
+            os.remove(ruta)
+    except OSError as fallo:
+        # No se pudo reclamar. Se devuelven igual: perder la carrera es raro, perder el
+        # correo entero es hoy. La proxima corrida las vera repetidas y las descartara.
+        print(f'   [AVISO] no se pudo reclamar el buzon ({fallo}): entran sin reclamar')
+
+    print(f'[GOOGLE] {len(df)} oferta(s) esperando en el buzon')
+    return df
+
+
+def _vaciar_buzon_google(ruta=PENDIENTES_GOOGLE):
+    """Borra el buzon reclamado. Solo DESPUES de escribir el historico con exito.
+
+    Se borra el .enproceso y no el buzon: lo que Google haya dejado mientras corriamos es
+    de manana y no se ha reportado a nadie.
+    """
+    reclamado = ruta + '.enproceso'
+    try:
+        os.remove(reclamado)
+    except FileNotFoundError:
+        pass
+    except OSError as fallo:
+        # El historico ya se escribio: la proxima corrida lo volvera a leer y
+        # actualizar() las descartara por repetidas. Ruido, no perdida.
+        print(f'   [AVISO] no se pudo vaciar {reclamado} ({fallo})')
+
+
 def ejecutar_diario():
     """Recorre CIUDADES, actualiza el historico y manda el correo. Devuelve exit code."""
     # Se comprueban ANTES de scrapear: si no, el historico ya marco las ofertas como
@@ -94,14 +170,27 @@ def ejecutar_diario():
             partes.append(df.assign(ciudad_busqueda=_ciudad_corta(ciudad)))
 
     if fallos_por_ciudad == len(CIUDADES):
+        # Se sale ANTES de tocar el buzon: si los tres sitios estan caidos, lo de Google
+        # sigue esperando y entra en la proxima corrida en vez de gastarse en un correo
+        # que no se va a mandar.
         print('[ERROR] Todos los sitios fallaron en todas las ciudades')
         return EXIT_SCRAPE_FALLO
+
+    # Va antes del 'if not partes': un dia en que los tres sitios no devuelvan nada pero
+    # Google si, el correo debe salir igual.
+    pendientes = _google_pendientes()
+    if not pendientes.empty:
+        partes.append(pendientes)
 
     if not partes:
         print('[AVISO] Sin resultados en ninguna ciudad')
         return EXIT_OK
 
     nuevos = _registrar(_consolidar(partes), 'diario')
+
+    # El historico ya esta escrito: lo del buzon quedo dentro y no hace falta guardarlo.
+    if not pendientes.empty:
+        _vaciar_buzon_google()
 
     if nuevos.empty and not ENVIAR_SI_VACIO:
         print('[OK] Nada nuevo: no se envia correo')
