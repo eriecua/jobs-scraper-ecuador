@@ -217,3 +217,11 @@ def test_habilidades_se_regeneran(tmp_path):
     assert habilidades.regenerar(str(tmp_path)) == 2
     filas = pd.read_csv(tmp_path / 'habilidades.csv')
     assert set(filas['habilidad']) == {'SQL', 'Power BI'}
+
+
+def test_descripciones_rotas_no_tumban_el_correo(tmp_path):
+    # Corren DESPUES de escribir el historico: si revientan, las ofertas quedan vistas y
+    # sin correo. Un descripciones.csv sin columna 'id' hace fallar su lectura.
+    (tmp_path / 'descripciones.csv').write_text('basura,sin,clave\n1,2,3\n', encoding='utf-8')
+    nuevos = historico.actualizar(_ofertas('mt-1'), 'prueba', ruta=str(tmp_path / 'historico.csv'))
+    assert list(nuevos['id']) == ['mt-1']

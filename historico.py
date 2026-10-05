@@ -181,27 +181,35 @@ def actualizar(df, busqueda, ruta=RUTA):
 def _guardar_descripciones(df, ruta):
     """Anade a descripciones.csv las de las ofertas nuevas que la traen. Nunca falla.
 
-    Es un dato secundario: si el archivo esta abierto en Excel se avisa y se sigue, porque
-    reventar aqui dejaria sin correo un historico que ya se escribio bien.
+    Corre DESPUES de escribir el historico: una excepcion aqui dejaria esas ofertas
+    marcadas como vistas y sin correo, perdidas. Por eso se atrapa CUALQUIER error, no
+    solo el de Excel: la descripcion es un dato secundario y el correo pesa mas.
     """
+    try:
+        _anadir_descripciones(df, ruta)
+    except PermissionError:
+        print(f'[AVISO] no se pudo escribir {ruta} (abierto en otra aplicacion): '
+              f'las descripciones de esta corrida se pierden')
+    except Exception as e:
+        print(f'[AVISO] no se pudieron guardar las descripciones en {ruta}: {e!r}')
+
+
+def _anadir_descripciones(df, ruta):
     df = df.dropna(subset=['description'])
     # Una sola linea por descripcion: con saltos de linea dentro de un campo, Excel y
     # algunas importaciones de Power BI parten la fila. Para buscar habilidades da igual.
     df = df.assign(description=df['description'].astype(str)
                    .str.replace(r'\s+', ' ', regex=True).str.strip())
     df = df[df['description'] != '']
-    if os.path.exists(ruta):
+    existe = os.path.exists(ruta)
+    if existe:
         # Un repost pasado el plazo de caducidad vuelve con el mismo id: no se duplica.
         ya = set(pd.read_csv(ruta, dtype=str, usecols=['id'])['id'])
         df = df[~df['id'].isin(ya)]
     if df.empty:
         return
-    try:
-        df.to_csv(ruta, mode='a', index=False, header=not os.path.exists(ruta),
-                  encoding='utf-8-sig' if not os.path.exists(ruta) else 'utf-8')
-    except PermissionError:
-        print(f'[AVISO] no se pudo escribir {ruta} (abierto en otra aplicacion): '
-              f'{len(df)} descripciones se pierden en esta corrida')
+    df.to_csv(ruta, mode='a', index=False, header=not existe,
+              encoding='utf-8' if existe else 'utf-8-sig')
 
 
 def guardar(df, etiqueta, output_dir='data'):
