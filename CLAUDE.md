@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Scraper de empleos (LinkedIn + Indeed + Computrabajo) con histórico incremental y reporte
+Scraper de empleos (LinkedIn + Indeed + Computrabajo + Multitrabajos) con histórico incremental y reporte
 diario por correo. El uso detallado está en `README.md`; aquí solo lo que muerde.
 
 ## Ejecutar
@@ -75,7 +75,15 @@ Consecuencias, antes de diseñar nada encima:
 
 Añadir una ciudad exige tocar **dos** archivos. Computrabajo no entiende `"Quito, Ecuador"`:
 su ruta es `pichincha-en-quito`, y un slug inválido devuelve **200 con cero ofertas sin
-dar error**, así que hay que comprobarlo contra el sitio.
+dar error**, así que hay que comprobarlo contra el sitio. Multitrabajos no necesita tabla:
+traduce la ciudad sola vía `ubicaciones.py`, pero un filtro mal formado también da 200 con
+cero ofertas.
+
+Un sitio nuevo con módulo propio se registra en `FUENTES_PROPIAS` de `buscador.py`, con la
+firma `scrape(termino, ubicacion, resultados, dias_max, pais)`.
+
+`scrap.cmd` **escribe en `data/historico.csv`**: probar en una copia del proyecto, o las
+ofertas quedan marcadas como vistas y no salen en el correo.
 
 ## Git
 

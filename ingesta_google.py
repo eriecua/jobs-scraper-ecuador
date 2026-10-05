@@ -8,7 +8,7 @@ tarda segundos y es lo que de verdad importa.
     uv run --python 3.12 --with-requirements requirements.txt --no-project ^
         python ingesta_google.py ofertas_google.csv
 
-Las ofertas acaban en el MISMO data/historico.csv que linkedin, indeed y computrabajo,
+Las ofertas acaban en el MISMO data/historico.csv que el resto de sitios,
 con site='google', y salen en el siguiente correo diario como cualquier otra novedad.
 Pero no las escribe esto: las deja en un buzon y las escribe el diario. Ver abajo.
 
@@ -171,7 +171,7 @@ def ingerir(ruta_csv, ruta_buzon=PENDIENTES):
             'El CSV no cumple lo que el historico espera. Se para antes de escribir.'
         )
 
-    # ciudad/provincia con la misma tabla que usan los otros tres sitios. Es la unica
+    # ciudad/provincia con la misma tabla que usan los demas sitios. Es la unica
     # forma de que 'Quito' de Google y 'Quito, Pichincha, Ecuador' de LinkedIn se agrupen
     # juntos en el correo.
     pares = df['location'].map(ubicaciones.normalizar)

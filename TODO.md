@@ -4,11 +4,12 @@ Pendientes del scraper, con lo que ya se investigó de cada uno para no repetir 
 
 ---
 
-## 1. Multitrabajos — módulo hecho, falta integrarlo
+## 1. Multitrabajos — integrado (05/10/2026)
 
-`multitrabajos.py` scrapea bien por su cuenta (misma firma `scrape()` que
-`computrabajo.py`). **No está en `SITIOS_DEFECTO` ni en `buscar()`**: integrarlo en
-`buscador.py` (y revisar `main.py`/correo) quedó para otro bloque, por decisión del usuario.
+En `SITIOS_DEFECTO` y en `FUENTES_PROPIAS` de `buscador.py`; entra en `scrap.cmd` y en el
+diario sin más cambios. Diario completo probado en una copia del histórico, correo
+simulado: 55 de 152 ofertas nuevas (36%) vinieron de Multitrabajos, y solo 2 de sus 57
+estaban ya en otro sitio. Se añadió Cuenca a `CIUDADES` (slug de Computrabajo ya existía).
 
 ### Cómo se consigue (05/10/2026) — sin Playwright
 
@@ -55,15 +56,20 @@ User-Agent de navegador COMPLETO (con "Mozilla/5.0" a secas devuelve cuerpo vac�
 Campos llenos: id/title/company/location/date_posted/job_url/is_remote/job_type 100%,
 salary 0% (la API no lo trae). `company` = "Confidencial" cuando la oferta lo es.
 
-### Pendiente para integrarlo
+### Riesgos de la integración — medidos
 
-- `buscador.py`: añadir a `SITIOS_DEFECTO` y una rama en `buscar()` como la de Computrabajo
-  (`dias_max=math.ceil(horas/24)`). `CIUDADES` de `main.py` ya se traducen solas vía
-  `ubicaciones.normalizar()`; no hace falta tabla de slugs aparte.
-- `ubicaciones.py` ya reconoce sus formatos ("Cantón Duran", "Santo Domingo de los
-  Colorados", "Morona-Santiago", parroquias de Quito/Guayaquil). Siguen sin ciudad los
-  cantones que no están en `CANTONES` (Montecristi, Sangolquí, Machachi...): se quedan
-  con la provincia, que es lo que pide el diseño.
+- **Ventana del diario:** no era riesgo. `dias_max = ceil(24/24) = 1` pide el tramo
+  "menor a 2 días" y conserva hoy y ayer.
+- **Primera corrida:** con la ventana de 1 día el primer correo fue de tamaño normal
+  ("12 de 121 puestos nuevos te encajan").
+- **Abiertos:** duplicados entre sitios si el título varía; gráfico "Por sitio" con
+  `limite=5` ya tiene exactamente 5 sitios.
+
+### Visto de paso al probar
+
+- LinkedIn respondió **429** a las 12:44 del 05/10 (ver "Vigilar el bloqueo de LinkedIn").
+- Computrabajo Guayaquil: `[AVISO] 12/20 ofertas sin 'company'`. Sin revisar si es cambio
+  de estructura o empresas confidenciales.
 
 ---
 

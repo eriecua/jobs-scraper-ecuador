@@ -1,10 +1,10 @@
-# Jobs Scraper (LinkedIn + Indeed + Computrabajo)
+# Jobs Scraper (LinkedIn + Indeed + Computrabajo + Multitrabajos)
 
-Busca empleos en LinkedIn, Indeed y Computrabajo, los compara contra un histórico y
+Busca empleos en LinkedIn, Indeed, Computrabajo y Multitrabajos, los compara contra un histórico y
 guarda en CSV **solo lo que no habías visto antes**. Con `--diario` manda además un
 correo con las ofertas nuevas agrupadas por ciudad.
 
-Los tres sitios salen en el mismo CSV, con las mismas columnas. Si la misma vacante
+Todos los sitios salen en el mismo CSV, con las mismas columnas. Si la misma vacante
 aparece en varios sitios, se guarda una sola vez.
 
 ## Requisitos
@@ -218,7 +218,7 @@ Cada uno hace un solo trabajo:
 | Archivo | Qué hace |
 |---|---|
 | `main.py` | Configuración del diario, orquestación y línea de comandos |
-| `buscador.py` | Busca en los tres sitios y junta los resultados |
+| `buscador.py` | Busca en todos los sitios y junta los resultados |
 | `computrabajo.py` | Raspa Computrabajo (jobspy no lo cubre) |
 | `historico.py` | Decide qué es nuevo y guarda los CSV |
 | `ubicaciones.py` | Convierte la ubicación cruda de cada sitio en ciudad + provincia |

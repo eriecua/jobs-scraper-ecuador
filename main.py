@@ -1,5 +1,5 @@
 r"""
-Scraper de empleos (LinkedIn + Indeed + Computrabajo) con historico incremental.
+Scraper de empleos (LinkedIn + Indeed + Computrabajo + Multitrabajos) con historico incremental.
 
 Uso:  .\scrap "Data Analyst"
       .\scrap_diario.cmd          reporte diario por correo
@@ -9,8 +9,9 @@ por eso scrap.cmd lo ejecuta en un entorno con Python 3.12 gestionado por uv.
 
 Aqui solo viven la configuracion, la orquestacion y la linea de comandos. El trabajo de
 verdad esta repartido:
-    buscador.py     busca en los tres sitios
+    buscador.py     busca en todos los sitios
     computrabajo.py raspa Computrabajo (jobspy no lo cubre)
+    multitrabajos.py raspa Multitrabajos por su API JSON (jobspy no lo cubre)
     historico.py    decide que es nuevo y guarda
     perfil.py       puntua cada oferta contra lo que buscas
     ubicaciones.py  normaliza las 19 formas de escribir una ciudad
@@ -36,6 +37,7 @@ CIUDADES = [
     'Quito, Ecuador',
     'Santo Domingo de los Tsachilas, Ecuador',
     'Guayaquil, Ecuador',
+    'Cuenca, Ecuador',
 ]
 HORAS_DIARIO = 24        # ventana de la busqueda agendada
 RESULTADOS_DIARIO = 100  # por sitio y por ciudad
@@ -170,13 +172,13 @@ def ejecutar_diario():
             partes.append(df.assign(ciudad_busqueda=_ciudad_corta(ciudad)))
 
     if fallos_por_ciudad == len(CIUDADES):
-        # Se sale ANTES de tocar el buzon: si los tres sitios estan caidos, lo de Google
+        # Se sale ANTES de tocar el buzon: si todos los sitios estan caidos, lo de Google
         # sigue esperando y entra en la proxima corrida en vez de gastarse en un correo
         # que no se va a mandar.
         print('[ERROR] Todos los sitios fallaron en todas las ciudades')
         return EXIT_SCRAPE_FALLO
 
-    # Va antes del 'if not partes': un dia en que los tres sitios no devuelvan nada pero
+    # Va antes del 'if not partes': un dia en que los sitios no devuelvan nada pero
     # Google si, el correo debe salir igual.
     pendientes = _google_pendientes()
     if not pendientes.empty:
@@ -209,7 +211,7 @@ def _terminos(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Scraper de empleos (LinkedIn + Indeed + Computrabajo)')
+        description='Scraper de empleos (LinkedIn + Indeed + Computrabajo + Multitrabajos)')
     parser.add_argument('termino_posicional', nargs='?', default='',
                         help='Puesto a buscar. Ej: "Data Analyst". '
                              'Hace falta al menos uno, aqui o en --termino')

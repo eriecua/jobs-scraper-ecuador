@@ -1,4 +1,4 @@
-r"""Busqueda de empleos en los tres sitios, devolviendo un solo DataFrame."""
+r"""Busqueda de empleos en todos los sitios, devolviendo un solo DataFrame."""
 import logging
 import math
 
@@ -6,14 +6,21 @@ import pandas as pd
 from jobspy import scrape_jobs
 
 import computrabajo
+import multitrabajos
 import ubicaciones
 
 # jobspy loguea a stderr por su cuenta: ni verbose=0 ni silenciar el logger "JobSpy"
 # bastan (sus loggers se crean tarde y se llaman "JobSpy:Linkedin", con dos puntos).
 logging.disable(logging.INFO)
 
-# computrabajo no lo cubre jobspy: lo raspa el modulo computrabajo.py de al lado.
-SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo')
+# Sitios que jobspy no cubre y raspa un modulo propio. Todos comparten la firma
+# scrape(termino, ubicacion, resultados, dias_max, pais): anadir uno es una linea aqui.
+FUENTES_PROPIAS = {
+    'computrabajo': computrabajo.scrape,
+    'multitrabajos': multitrabajos.scrape,
+}
+
+SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo', 'multitrabajos')
 
 # La descripcion completa no se usa para nada: el indice de compatibilidad puntua con el
 # titulo. Indeed la manda igual dentro de sus resultados, y son miles de caracteres por
@@ -40,12 +47,12 @@ def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=Non
 
     for sitio in sitios:
         try:
-            if sitio == 'computrabajo':
-                parcial = computrabajo.scrape(
+            if sitio in FUENTES_PROPIAS:
+                parcial = FUENTES_PROPIAS[sitio](
                     termino=termino,
                     ubicacion=ubicacion,
                     resultados=resultados,
-                    # Computrabajo solo publica la antiguedad en dias, no en horas.
+                    # Los sitios propios solo publican la antiguedad en dias, no en horas.
                     dias_max=math.ceil(horas / 24) if horas else None,
                     pais=pais,
                 )
@@ -73,12 +80,13 @@ def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=Non
             print(f"   [AVISO] {sitio} fallo: {e}")
             fallidos.append(sitio)
 
-    # Computrabajo devuelve 200 con cero ofertas cuando algo no cuadra, sin dar error.
-    # El motivo concreto lo sabe computrabajo.py, que ya avisa por su cuenta; aqui solo
-    # se senala la discrepancia para que no pase inadvertida.
-    if 'computrabajo' in vacios and partes:
-        print(f"   [AVISO] computrabajo no devolvio nada para '{ubicacion}' "
-              f"pero otros sitios si")
+    # Los sitios propios devuelven 200 con cero ofertas cuando un slug o filtro no cuadra,
+    # sin dar error. El motivo concreto lo sabe cada modulo, que ya avisa por su cuenta;
+    # aqui solo se senala la discrepancia para que no pase inadvertida.
+    for sitio in vacios:
+        if sitio in FUENTES_PROPIAS and partes:
+            print(f"   [AVISO] {sitio} no devolvio nada para '{ubicacion}' "
+                  f"pero otros sitios si")
 
     if not partes:
         return pd.DataFrame(), fallidos
@@ -91,7 +99,7 @@ def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=Non
         juntos['date_posted'] = pd.to_datetime(juntos['date_posted'], errors='coerce')
 
     # Cada sitio escribe la ubicacion a su manera ('Quito, Pichincha, Ecuador',
-    # 'Quito, P, EC'). Se normaliza aqui, el unico punto por donde pasan los tres sitios,
+    # 'Quito, P, EC'). Se normaliza aqui, el unico punto por donde pasan todos los sitios,
     # para que el CSV, el historico y el correo vean todos la misma ciudad. La guarda no
     # es adorno: si ningun sitio trajo 'location', sin ella es un KeyError seco.
     if 'location' in juntos.columns:

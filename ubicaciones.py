@@ -161,7 +161,7 @@ def normalizar(location):
     while partes and partes[-1] in _PAIS:
         partes.pop()
 
-    # La provincia se busca desde el final: es donde la escriben los tres sitios, y asi
+    # La provincia se busca desde el final: es donde la escriben todos los sitios, y asi
     # 'Esmeraldas, Esmeraldas' entrega la segunda como provincia y deja libre la primera.
     provincia = ''
     for i in range(len(partes) - 1, -1, -1):
