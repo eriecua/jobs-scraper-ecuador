@@ -11,7 +11,8 @@ decir la palabra exacta. En una busqueda dirigida el filtro ya lo hizo el propio
 en el diario, exigirlo era perder ofertas sin saber cuales.
 
 Se calcula SOLO con el titulo, a proposito. Solo el 26% de las ofertas trae descripcion
-(y toda de Indeed), asi que puntuar con ella dejaria a ciegas a 3 de cada 4.
+(Indeed y Multitrabajos; ver habilidades.py), asi que puntuar con ella dejaria a ciegas
+a las de LinkedIn y Computrabajo.
 
 Para ajustarlo, edita las listas de abajo: son la unica parte que se toca.
 """
@@ -24,23 +25,43 @@ import unicodedata
 
 # INTERES: de que va el puesto que buscas. Suma puntos y sube la oferta en la lista.
 # NO es obligatorio: una oferta sin ninguno de estos sale igual, solo que mas abajo.
+# Ajustado el 05/10/2026 a las dos familias que busca el usuario: Datos/BI y Procesos /
+# mejora continua pesan 35 y bastan solas para "te encaja" (>= 30). 'analista' baja a
+# 20: dice el rol pero no el tema, y solo ya no encaja ("Analista contable"); con un
+# tema suma ("Analista de Datos" = 35 + 10). Ingenieria industrial pasa a secundaria.
 INTERES = {
-    'business intelligence': 30,
-    'inteligencia de negocios': 30,
-    'ingeniero industrial': 30,
-    'ingenieria industrial': 30,
-    'analista': 30,
-    'analyst': 30,
-    'datos': 30,
+    # Datos / BI
+    'business intelligence': 35,
+    'inteligencia de negocios': 35,
+    'datos': 35,
     'data': 30,
-    'mejora continua': 25,
-    'procesos': 25,
-    'bi': 25,
-    'planificacion': 20,
-    'planner': 20,
-    'planificador': 20,
+    'bi': 30,
+    'analytics': 30,
+    'analitica': 30,
+    # Procesos / mejora continua
+    'mejora continua': 35,
+    'procesos': 35,
+    'process': 30,
+    'excelencia operacional': 35,
+    'excelencia operativa': 35,
+    'lean': 25,
+    'kaizen': 25,
+    'bpm': 25,
+    # Analista de negocio: el cruce entre procesos y datos
+    'business analyst': 30,
+    'analista de negocio': 30,
+    'analista de negocios': 30,
+    # El rol sin tema
+    'analista': 20,
+    'analyst': 20,
+    # Secundarios
     'optimización': 20,
-    'inteligencia artificial': 20,
+    'ingeniero industrial': 15,
+    'ingenieria industrial': 15,
+    'planificacion': 15,
+    'planner': 15,
+    'planificador': 15,
+    'inteligencia artificial': 15,
 }
 
 # DESEABLES: herramientas y detalles que suman encima.
@@ -85,10 +106,18 @@ EXCLUIDOS = [
 # que hoy molesta, y activar esto de golpe escondería mucho sin avisar.
 FAMILIAS_EXCLUIDAS = []
 
+# NIVELES_EXCLUIDOS: niveles (de NIVELES, abajo) que no quieres en el correo. Por nivel y
+# no por familia: "Pasante de Mejora Continua" cae en la familia Procesos, no en Practicas.
+NIVELES_EXCLUIDOS = ['Practicas']
+
 # NIVEL: solo etiqueta lo que el titulo deja ver. NO suma ni resta al puntaje: muchos
 # titulos no dicen el nivel, y castigarlos por callarlo seria inventar informacion.
 NIVELES = {
-    'Practicas': ['practicante', 'pasante', 'pasantia', 'intern', 'trainee'],
+    # Se busca por subcadena: 'intern' a secas esta en "internacional" y "auditor
+    # interno", que con NIVELES_EXCLUIDOS desaparecerian del correo.
+    'Practicas': ['practicante', 'pasante', 'pasantia', ' intern ', ' interns ',
+                  'internship', 'trainee', 'practicas pre', 'preprofesional',
+                  'pre profesional', 'pre-profesional'],
     'Junior': ['junior', ' jr', 'jr.', 'auxiliar', 'asistente'],
     'Senior': ['senior', ' sr', 'sr.', 'especialista', 'lead', 'experto'],
     'Jefatura': ['jefe', 'gerente', 'director', 'manager', 'coordinador',
@@ -171,6 +200,9 @@ def excluir(titulo, familia=None):
             return termino
     if familia and familia in FAMILIAS_EXCLUIDAS:
         return f'familia: {familia}'
+    etiqueta = nivel(titulo)
+    if etiqueta in NIVELES_EXCLUIDOS:
+        return f'nivel: {etiqueta}'
     return None
 
 

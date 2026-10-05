@@ -71,7 +71,7 @@ Consecuencias, antes de diseñar nada encima:
 |---|---|
 | Ciudades del diario | `CIUDADES` en `main.py` **y** `SLUGS_UBICACION` en `computrabajo.py` |
 | Cómo se agrupan las ubicaciones | `CANTONES` / `ALIAS` en `ubicaciones.py` (afecta al CSV y al gráfico a la vez) |
-| Términos del índice de compatibilidad | `INTERES` / `DESEABLES` (ordenan) y `EXCLUIDOS` / `FAMILIAS_EXCLUIDAS` (quitan) en `perfil.py` |
+| Términos del índice de compatibilidad | `INTERES` / `DESEABLES` (ordenan) y `EXCLUIDOS` / `FAMILIAS_EXCLUIDAS` / `NIVELES_EXCLUIDOS` (quitan) en `perfil.py` |
 | Familias de puesto del gráfico | `FAMILIAS` en `reporte.py` |
 | Dónde va la descripción | `NOMBRE_DESCRIPCIONES` en `historico.py` (se separa al escribir) |
 | Habilidades que se miden | `HABILIDADES` en `habilidades.py` (regenera `data/habilidades.csv` entero) |
