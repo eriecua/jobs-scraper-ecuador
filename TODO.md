@@ -68,8 +68,9 @@ salary 0% (la API no lo trae). `company` = "Confidencial" cuando la oferta lo es
 ### Visto de paso al probar
 
 - LinkedIn respondió **429** a las 12:44 del 05/10 (ver "Vigilar el bloqueo de LinkedIn").
-- Computrabajo Guayaquil: `[AVISO] 12/20 ofertas sin 'company'`. Sin revisar si es cambio
-  de estructura o empresas confidenciales.
+- Computrabajo perdía empresa y fecha — **arreglado el 05/10**. Las empresas sin perfil
+  (20%) vienen como texto plano, no como enlace; y pasados unos días la antigüedad sale
+  como "25 de septiembre" sin año (10%). Las filas viejas del histórico siguen vacías.
 
 ---
 

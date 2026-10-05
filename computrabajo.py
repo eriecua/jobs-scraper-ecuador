@@ -133,6 +133,34 @@ def _crear_sesion():
     return sesion
 
 
+MESES = {
+    'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6, 'julio': 7,
+    'agosto': 8, 'septiembre': 9, 'setiembre': 9, 'octubre': 10, 'noviembre': 11,
+    'diciembre': 12,
+}
+
+
+def _dias_desde_fecha(dia, mes, hoy=None):
+    """Dias transcurridos desde una fecha "25 de septiembre" que Computrabajo da SIN ano.
+
+    dia y mes llegan como enteros (25, 9). Devuelve un int >= 0, o None si la fecha no
+    existe (p.ej. 31 de febrero).
+    """
+    hoy = hoy or date.today()
+    try:
+        fecha = date(hoy.year, mes, dia)
+    except ValueError:
+        return None
+    # Sin ano, una fecha "del futuro" solo puede ser del ano pasado: en enero,
+    # "20 de diciembre" es el diciembre que acaba de terminar.
+    if fecha > hoy:
+        try:
+            fecha = date(hoy.year - 1, mes, dia)
+        except ValueError:  # 29 de febrero visto en un ano cuyo anterior no es bisiesto
+            return None
+    return (hoy - fecha).days
+
+
 def _dias_desde(texto):
     """Convierte el texto de antiguedad de Computrabajo a dias aproximados."""
     if not texto:
@@ -140,6 +168,11 @@ def _dias_desde(texto):
     # Computrabajo escribe "Hace 3 dias" y "Mas de 30 dias": sin quitar las tildes
     # ningun patron de abajo coincide y todo devolveria None.
     t = _sin_acentos(texto).lower()
+    # Pasados unos dias deja de escribir "Hace N dias" y pone la fecha: "25 de septiembre".
+    # Medido el 05/10/2026: el 10% de las ofertas, justo las mas antiguas.
+    m = re.fullmatch(r'(\d{1,2})\s+de\s+([a-z]+)', t.strip())
+    if m and m.group(2) in MESES:
+        return _dias_desde_fecha(int(m.group(1)), MESES[m.group(2)])
     if 'hoy' in t or 'minuto' in t or 'hora' in t:
         return 0
     if 'ayer' in t:
@@ -178,7 +211,11 @@ def _parsear_ofertas(html, dominio):
         if not titulo_link:
             continue
 
-        empresa = articulo.select_one('a[offer-grid-article-company-url]')
+        # Con perfil en Computrabajo la empresa es un enlace; sin perfil (el 20% medido el
+        # 05/10, confidenciales incluidas: "Importante empresa del sector") es texto plano
+        # en el mismo <p>. Leer solo el enlace las dejaba vacias.
+        empresa = (articulo.select_one('a[offer-grid-article-company-url]')
+                   or articulo.select_one('p.dFlex.fs16.fc_base.mt5'))
         ubicacion = articulo.select_one('p.fs16.fc_base.mt5:not(.dFlex) > span.mr10')
         fecha = articulo.select_one('p.fs13.fc_aux.mt15')
         salario = articulo.select_one('div.fs13.mt15 > span.dIB.mr10')
