@@ -8,11 +8,10 @@ Objetivos del scraper, acordados con el usuario: (1) postular a lo que mejor enc
 (2) saber qué habilidades piden esos puestos, (3) analizar el mercado en Power BI
 (el modelo y el ETL los hace él, desde `data/historico.csv` y los CSV ligados por `id`).
 
-1. **Confiabilidad.** Si Gmail falla al enviar (código 2), las ofertas ya quedaron
-   marcadas como vistas en el histórico y no vuelven a salir: solo quedan en un
-   `diario_*.csv`. Propuesta: *outbox* (columna `notificado_en`; el correo manda lo no
-   notificado y lo marca solo si el envío salió bien) y una tabla `corridas` (sitio,
-   ciudad, ofertas, error, segundos) para avisar de un sitio que lleva varias corridas en 0.
+1. ~~**Confiabilidad.**~~ Hecho el 05/10: outbox `data/correo_pendiente.csv` (un correo
+   fallido se reenvía en la siguiente corrida) y `data/corridas.csv` (ofertas, error y
+   segundos por sitio y búsqueda). **Falta:** avisar en el correo cuando un sitio lleve
+   varias corridas en 0, leyendo `corridas.csv`.
 2. **Descripciones, fase 2.** Computrabajo y LinkedIn no la traen en la búsqueda (una
    petición más por oferta). Pedirla solo para las ofertas nuevas que encajen.
 3. **Staging sin decidir.** `graficos_generados/*.png`, `scrapjobs/scrapjobs.sqlproj`,
