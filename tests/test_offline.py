@@ -225,3 +225,77 @@ def test_descripciones_rotas_no_tumban_el_correo(tmp_path):
     (tmp_path / 'descripciones.csv').write_text('basura,sin,clave\n1,2,3\n', encoding='utf-8')
     nuevos = historico.actualizar(_ofertas('mt-1'), 'prueba', ruta=str(tmp_path / 'historico.csv'))
     assert list(nuevos['id']) == ['mt-1']
+
+
+# --- main.py: outbox del correo diario --------------------------------------------------
+
+import main  # noqa: E402
+
+
+@pytest.fixture
+def diario(tmp_path, monkeypatch):
+    """Corre ejecutar_diario() en una carpeta temporal, sin red y con un correo falso.
+
+    Devuelve correr(ids, envio_ok) -> (codigo, ids del adjunto o None).
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'data').mkdir()
+    monkeypatch.setattr(main, 'CIUDADES', ['Quito, Ecuador'])
+    monkeypatch.setattr(main.correo, 'faltan_credenciales', lambda: [])
+    monkeypatch.setattr(main.habilidades, 'regenerar', lambda *a, **k: 0)
+    monkeypatch.setattr(historico, 'RUTA', os.path.join('data', 'historico.csv'))
+    monkeypatch.setattr(historico.actualizar, '__defaults__',
+                        (os.path.join('data', 'historico.csv'),))
+    enviados = []
+
+    def correr(ids, envio_ok=True):
+        oferta = _ofertas(*ids).drop(columns=['description']).assign(
+            ciudad='Quito', provincia='Pichincha')
+        monkeypatch.setattr(main, 'buscar', lambda **k: (oferta, []))
+
+        def enviar(asunto, cuerpo, ruta):
+            enviados.append(sorted(pd.read_csv(ruta, dtype=str)['id']) if ruta else None)
+            return envio_ok
+        monkeypatch.setattr(main.correo, 'enviar', enviar)
+        antes = len(enviados)
+        codigo = main.ejecutar_diario()
+        # Solo el correo de ESTA corrida: devolver el de la anterior hacia pasar una
+        # prueba de reintento aunque no se reintentara nada.
+        return codigo, enviados[-1] if len(enviados) > antes else None
+
+    return correr
+
+
+def test_correo_fallido_se_reintenta(diario):
+    codigo, adjunto = diario(['mt-1', 'mt-2'], envio_ok=False)
+    assert codigo == main.EXIT_CORREO_FALLO
+    assert os.path.exists(main.CORREO_PENDIENTE)
+
+    # mt-1 y mt-2 ya estan en el historico (vistas): sin outbox no volverian a salir.
+    codigo, adjunto = diario(['mt-2', 'mt-3'], envio_ok=True)
+    assert codigo == main.EXIT_OK
+    assert adjunto == ['mt-1', 'mt-2', 'mt-3']  # sin duplicar mt-2
+    assert not os.path.exists(main.CORREO_PENDIENTE)
+
+
+def test_correo_bueno_no_deja_pendientes(diario):
+    codigo, adjunto = diario(['mt-1'])
+    assert (codigo, adjunto) == (main.EXIT_OK, ['mt-1'])
+    assert not os.path.exists(main.CORREO_PENDIENTE)
+    # La siguiente corrida sin nada nuevo no reenvia nada.
+    assert diario(['mt-1'])[0] == main.EXIT_OK
+
+
+def test_dia_sin_novedades_reintenta_lo_pendiente(diario):
+    diario(['mt-1'], envio_ok=False)
+    codigo, adjunto = diario(['mt-1'])  # nada nuevo hoy
+    assert adjunto == ['mt-1']
+
+
+def test_busqueda_suelta_no_toca_el_outbox(diario, monkeypatch):
+    diario(['mt-1'], envio_ok=False)
+    antes = open(main.CORREO_PENDIENTE, encoding='utf-8-sig').read()
+    monkeypatch.setattr(sys, 'argv', ['main.py', 'analista'])
+    monkeypatch.setattr(main, 'buscar', lambda **k: (_ofertas('mt-9').drop(columns=['description']), []))
+    assert main.main() == main.EXIT_OK
+    assert open(main.CORREO_PENDIENTE, encoding='utf-8-sig').read() == antes

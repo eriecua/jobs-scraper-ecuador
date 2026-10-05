@@ -37,7 +37,11 @@ histórico y descripciones. Correr antes de cada commit. Una prueba nueva tiene 
 **fallar** con el error que cubre: comprobarlo reintroduciéndolo (ya hubo una que pasaba
 igual con el fallo dentro).
 
-Códigos de salida: `0` ok · `1` todos los sitios fallaron · `2` no se pudo enviar el correo ·
+Si Gmail falla, las ofertas del correo quedan en `data/correo_pendiente.csv` (outbox) y la
+siguiente corrida las reenvía junto con las nuevas; se borra solo tras un envío bueno. Peor
+caso: un correo duplicado, nunca una oferta perdida. No borrarlo a mano.
+
+Códigos de salida: `0` ok · `1` todos los sitios fallaron · `2` no se pudo enviar el correo (se reintenta) ·
 `3` no se pudo escribir `data/historico.csv` (lo tienes abierto en Excel).
 
 ## Los datos, medidos — no supuestos

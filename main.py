@@ -56,6 +56,12 @@ ENVIAR_SI_VACIO = False  # si no hay nada nuevo, por defecto no manda correo
 # justo lo que pasaba con las 71 primeras.
 PENDIENTES_GOOGLE = os.path.join('data', 'google_pendientes.csv')
 
+# Outbox del correo diario. historico.actualizar() marca las ofertas como vistas ANTES de
+# enviar: si Gmail fallaba, esas ofertas no volvian a salir nunca. Ahora quedan aqui hasta
+# que un envio sale bien, y la siguiente corrida las suma a sus nuevas. Archivo aparte y no
+# una columna del historico: una columna obligaria a rellenar las filas viejas.
+CORREO_PENDIENTE = os.path.join('data', 'correo_pendiente.csv')
+
 # Codigos de salida, para que la tarea agendada distinga que paso.
 EXIT_OK = 0
 EXIT_SCRAPE_FALLO = 1
@@ -155,6 +161,47 @@ def _vaciar_buzon_google(ruta=PENDIENTES_GOOGLE):
         print(f'   [AVISO] no se pudo vaciar {reclamado} ({fallo})')
 
 
+def _sumar_correo_pendiente(nuevos, ruta=CORREO_PENDIENTE):
+    """Las ofertas de un correo que no salio, sumadas a las nuevas de hoy.
+
+    Si no se puede leer, se avisa y se sigue: no puede tumbar el correo de hoy, y el
+    archivo se queda para mirarlo.
+    """
+    if not os.path.exists(ruta):
+        return nuevos
+    try:
+        atrasadas = pd.read_csv(ruta, dtype=str)
+    except Exception as fallo:
+        print(f'   [AVISO] no se pudo leer {ruta} ({fallo}): se sigue sin eso')
+        return nuevos
+    print(f'[CORREO] {len(atrasadas)} oferta(s) de un correo anterior que no salio')
+    juntas = pd.concat([atrasadas, nuevos], ignore_index=True)
+    return juntas[~juntas['id'].astype(str).duplicated(keep='first')].reset_index(drop=True)
+
+
+def _guardar_correo_pendiente(nuevos, ruta=CORREO_PENDIENTE):
+    """Deja las ofertas del correo en el outbox ANTES de enviarlo."""
+    try:
+        tmp = ruta + '.tmp'
+        nuevos.to_csv(tmp, index=False, encoding='utf-8-sig')
+        os.replace(tmp, ruta)
+    except OSError as fallo:
+        # Sin outbox se envia igual: es lo que pasaba antes de existir.
+        print(f'   [AVISO] no se pudo guardar {ruta} ({fallo}): si el correo falla, '
+              f'estas ofertas no se reintentan')
+
+
+def _vaciar_correo_pendiente(ruta=CORREO_PENDIENTE):
+    """Borra el outbox. Solo DESPUES de un envio que salio bien."""
+    try:
+        os.remove(ruta)
+    except FileNotFoundError:
+        pass
+    except OSError as fallo:
+        # Peor caso: la proxima corrida reenvia estas ofertas. Duplicado, no perdida.
+        print(f'   [AVISO] no se pudo vaciar {ruta} ({fallo}): se reenviaran')
+
+
 def ejecutar_diario():
     """Recorre CIUDADES, actualiza el historico y manda el correo. Devuelve exit code."""
     # Se comprueban ANTES de scrapear: si no, el historico ya marco las ofertas como
@@ -203,13 +250,25 @@ def ejecutar_diario():
     if not pendientes.empty:
         _vaciar_buzon_google()
 
+    # Antes del 'nada nuevo': un dia sin novedades igual debe reintentar lo que no salio.
+    nuevos = _sumar_correo_pendiente(nuevos)
+
     if nuevos.empty and not ENVIAR_SI_VACIO:
         print('[OK] Nada nuevo: no se envia correo')
         return EXIT_OK
 
     ruta = historico.guardar(nuevos, 'diario') if not nuevos.empty else None
     asunto, cuerpo = reporte.construir(nuevos, horas=HORAS_DIARIO)
-    return EXIT_OK if correo.enviar(asunto, cuerpo, ruta) else EXIT_CORREO_FALLO
+    if not nuevos.empty:
+        _guardar_correo_pendiente(nuevos)
+    if not correo.enviar(asunto, cuerpo, ruta):
+        print(f'[AVISO] el correo no salio: sus ofertas quedan en {CORREO_PENDIENTE} '
+              f'y se reintentan en la proxima corrida')
+        return EXIT_CORREO_FALLO
+    # Entre un envio bueno y este borrado, un corte reenviaria el correo manana: se
+    # prefiere un duplicado a una perdida.
+    _vaciar_correo_pendiente()
+    return EXIT_OK
 
 
 def _terminos(args):
