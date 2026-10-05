@@ -20,7 +20,8 @@ from perfil import _coincide, _norm
 # Grupo -> habilidad -> como se escribe en las ofertas. Los sinonimos se escriben con
 # naturalidad (mayusculas, tildes): se normalizan igual que el texto. Se buscan como
 # palabra completa, asi que 'excel' no coincide con 'excelente'.
-# Calidad (ISO 9001, Six Sigma, 5S) fuera a proposito: no le interesa al usuario.
+# Calidad (ISO 9001, Six Sigma) fuera a proposito: no le interesa al usuario. 5S si,
+# porque es de mejora continua, que es lo que el sabe.
 HABILIDADES = {
     'Datos / BI': {
         'SQL': ['SQL', 'SQL Server', 'MySQL', 'PostgreSQL', 'T-SQL', 'PL/SQL'],
@@ -32,7 +33,9 @@ HABILIDADES = {
         'Estadística': ['estadística', 'estadístico', 'statistics', 'statistical'],
     },
     'Procesos / mejora continua': {
+        'Mejora continua': ['mejora continua', 'continuous improvement'],
         'Lean': ['Lean', 'Lean Manufacturing'],
+        '5S': ['5S', '5 S'],
         'Kaizen': ['Kaizen'],
         'BPMN': ['BPMN', 'Bizagi'],
         'KPI': ['KPI', 'KPIs', 'indicadores de gestión'],
