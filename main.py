@@ -13,6 +13,7 @@ verdad esta repartido:
     computrabajo.py raspa Computrabajo (jobspy no lo cubre)
     multitrabajos.py raspa Multitrabajos por su API JSON (jobspy no lo cubre)
     historico.py    decide que es nuevo y guarda
+    habilidades.py  que habilidades pide cada oferta, desde su descripcion
     perfil.py       puntua cada oferta contra lo que buscas
     ubicaciones.py  normaliza las 19 formas de escribir una ciudad
     reporte.py      decide que dice el correo y en que orden
@@ -26,6 +27,7 @@ import sys
 import pandas as pd
 
 import correo
+import habilidades
 import historico
 import reporte
 from buscador import SITIOS_DEFECTO, buscar
@@ -76,6 +78,8 @@ def _registrar(df, etiqueta):
     """Actualiza el historico y avisa por consola. Devuelve solo las ofertas nuevas."""
     nuevos = historico.actualizar(df, etiqueta)
     print(f'[OK] {len(df)} empleos ({len(nuevos)} nuevos desde la ultima corrida)')
+    if not nuevos.empty:
+        habilidades.regenerar()
     return nuevos
 
 
