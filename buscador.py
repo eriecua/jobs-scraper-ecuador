@@ -22,10 +22,9 @@ FUENTES_PROPIAS = {
 
 SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo', 'multitrabajos')
 
-# La descripcion completa no se usa para nada: el indice de compatibilidad puntua con el
-# titulo. Indeed la manda igual dentro de sus resultados, y son miles de caracteres por
-# oferta que engordan el CSV sin aportar. Poner en False para conservarla.
-DESCARTAR_DESCRIPCION = True
+# La descripcion completa (la traen gratis Indeed y Multitrabajos) se deja pasar: de ahi
+# salen las habilidades que pide el puesto. No llega al historico: historico.actualizar()
+# la separa a data/descripciones.csv, que se liga por id.
 
 
 def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=None,
@@ -106,8 +105,5 @@ def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=Non
         pares = juntos['location'].map(ubicaciones.normalizar)
         juntos['ciudad'] = [c for c, _ in pares]
         juntos['provincia'] = [p for _, p in pares]
-
-    if DESCARTAR_DESCRIPCION and not con_descripcion and 'description' in juntos.columns:
-        juntos = juntos.drop(columns=['description'])
 
     return juntos, fallidos

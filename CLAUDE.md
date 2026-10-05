@@ -50,8 +50,10 @@ min_amount / max_amount 3% · company_industry 3% · job_level 0%
 Consecuencias, antes de diseñar nada encima:
 
 - **No se puede analizar sueldos.** El 3% no sostiene ningún gráfico ni promedio.
-- **`description` se descarta a propósito** (`DESCARTAR_DESCRIPCION` en `buscador.py`).
-  Solo la traía Indeed; el índice de compatibilidad puntúa con el título.
+- **`description` vive aparte, en `data/descripciones.csv`** (`id`, `description`), no en
+  el histórico. La traen gratis Multitrabajos (100%) e Indeed (~87%); Computrabajo y
+  LinkedIn no, y pedirla cuesta una petición por oferta. Sirve para sacar habilidades;
+  el índice de compatibilidad sigue puntuando con el título.
 - **Las ubicaciones no coinciden entre sitios**: `"Quito, Pichincha, Ecuador"` (LinkedIn),
   `"Quito, P, EC"` (Indeed), `"Quito, Pichincha"` (Computrabajo) — 19 textos para 6
   ciudades. Se normalizan en `ubicaciones.py`, que devuelve **(ciudad, provincia)** y es
@@ -71,7 +73,7 @@ Consecuencias, antes de diseñar nada encima:
 | Cómo se agrupan las ubicaciones | `CANTONES` / `ALIAS` en `ubicaciones.py` (afecta al CSV y al gráfico a la vez) |
 | Términos del índice de compatibilidad | `INTERES` / `DESEABLES` (ordenan) y `EXCLUIDOS` / `FAMILIAS_EXCLUIDAS` (quitan) en `perfil.py` |
 | Familias de puesto del gráfico | `FAMILIAS` en `reporte.py` |
-| Descartar la descripción | `DESCARTAR_DESCRIPCION` en `buscador.py` |
+| Dónde va la descripción | `NOMBRE_DESCRIPCIONES` en `historico.py` (se separa al escribir) |
 
 Añadir una ciudad exige tocar **dos** archivos. Computrabajo no entiende `"Quito, Ecuador"`:
 su ruta es `pichincha-en-quito`, y un slug inválido devuelve **200 con cero ofertas sin

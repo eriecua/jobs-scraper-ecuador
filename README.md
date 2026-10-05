@@ -125,11 +125,11 @@ uv run --python 3.12 --with-requirements requirements.txt --no-project python -c
 Te imprime cuántas encajan y las 15 mejores. Si aparecen puestos que no te interesan,
 añade la palabra a `EXCLUIDOS`; si falta alguno que sí, añádela a `NUCLEO`.
 
-### Sitios y descripción — `buscador.py`
+### Sitios — `buscador.py`
 
 ```python
-SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo')
-DESCARTAR_DESCRIPCION = True   # False para conservar la descripción en el CSV
+SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo', 'multitrabajos')
+FUENTES_PROPIAS = {...}   # sitios que no cubre jobspy, con su modulo propio
 ```
 
 ### Ciudades y provincias — `ubicaciones.py`
@@ -247,11 +247,11 @@ Cada sitio llena las que puede: LinkedIn e Indeed dan el salario en `min_amount`
 `max_amount`; Computrabajo lo da como texto en `salary`. `date_posted` sí queda
 unificada como fecha en los tres.
 
-La columna `description` **se descarta**: no se usa para nada (el índice puntúa con el
-título) y son miles de caracteres por oferta que engordan el CSV. Indeed la manda dentro
-de sus resultados, así que se elimina al final de la búsqueda. Para conservarla, pon
-`DESCARTAR_DESCRIPCION = False` en `buscador.py`, o usa `--descripcion` en una corrida
-suelta.
+La columna `description` **no entra en el histórico**: son ~1.800 caracteres por oferta.
+Se guarda aparte en `data/descripciones.csv` (`id`, `description`, una línea por oferta),
+solo para las ofertas nuevas que la traen: Multitrabajos e Indeed, que la mandan en la
+misma búsqueda. En Power BI se relaciona con el histórico por `id`. `--descripcion` pide
+además la de LinkedIn en una corrida suelta (una petición más por oferta).
 
 Se guarda en `utf-8-sig` para que Excel abra los acentos bien al doble clic.
 

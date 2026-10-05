@@ -20,6 +20,10 @@ COLUMNAS_CLAVE = ('id', 'company', 'title', 'location')
 # 'location'. Ninguna de las dos entra en COLUMNAS_CLAVE: la deduplicacion no cambia.
 COLUMNAS_HISTORICO = COLUMNAS_CLAVE + ('date_posted', 'ciudad', 'provincia')
 
+# La descripcion (~1.500 caracteres por oferta) vive aparte, al lado del historico, y se
+# liga por id: asi historico.csv sigue siendo ligero y en Power BI es una tabla relacionada.
+NOMBRE_DESCRIPCIONES = 'descripciones.csv'
+
 
 def _clave(df):
     """Clave empresa+titulo+ciudad normalizada, para cazar el mismo empleo entre sitios.
@@ -139,6 +143,10 @@ def actualizar(df, busqueda, ruta=RUTA):
         return nuevos
 
     nuevos = nuevos.assign(busqueda=busqueda, visto_primera_vez=date.today().isoformat())
+    descripciones = None
+    if 'description' in nuevos.columns:
+        descripciones = nuevos[['id', 'description']]
+        nuevos = nuevos.drop(columns=['description'])
 
     # Escritura atomica: si algo revienta a mitad, el historico anterior sigue intacto.
     tmp = ruta + '.tmp'
@@ -161,7 +169,39 @@ def actualizar(df, busqueda, ruta=RUTA):
             f"no se pudo actualizar {ruta}: esta abierto en otra aplicacion"
         )
 
+    # Despues del historico, no antes: si este no se pudo escribir, las ofertas vuelven en
+    # la proxima corrida y sus descripciones se habrian guardado dos veces.
+    if descripciones is not None:
+        _guardar_descripciones(
+            descripciones, os.path.join(os.path.dirname(ruta), NOMBRE_DESCRIPCIONES))
+
     return nuevos
+
+
+def _guardar_descripciones(df, ruta):
+    """Anade a descripciones.csv las de las ofertas nuevas que la traen. Nunca falla.
+
+    Es un dato secundario: si el archivo esta abierto en Excel se avisa y se sigue, porque
+    reventar aqui dejaria sin correo un historico que ya se escribio bien.
+    """
+    df = df.dropna(subset=['description'])
+    # Una sola linea por descripcion: con saltos de linea dentro de un campo, Excel y
+    # algunas importaciones de Power BI parten la fila. Para buscar habilidades da igual.
+    df = df.assign(description=df['description'].astype(str)
+                   .str.replace(r'\s+', ' ', regex=True).str.strip())
+    df = df[df['description'] != '']
+    if os.path.exists(ruta):
+        # Un repost pasado el plazo de caducidad vuelve con el mismo id: no se duplica.
+        ya = set(pd.read_csv(ruta, dtype=str, usecols=['id'])['id'])
+        df = df[~df['id'].isin(ya)]
+    if df.empty:
+        return
+    try:
+        df.to_csv(ruta, mode='a', index=False, header=not os.path.exists(ruta),
+                  encoding='utf-8-sig' if not os.path.exists(ruta) else 'utf-8')
+    except PermissionError:
+        print(f'[AVISO] no se pudo escribir {ruta} (abierto en otra aplicacion): '
+              f'{len(df)} descripciones se pierden en esta corrida')
 
 
 def guardar(df, etiqueta, output_dir='data'):

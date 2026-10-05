@@ -37,9 +37,9 @@ HEADERS = {
     'x-site-id': 'BMEC',
 }
 
-# Las de computrabajo.py mas las dos que esta API si trae y jobspy tambien usa.
+# Las de computrabajo.py mas las tres que esta API si trae y jobspy tambien usa.
 COLUMNAS = ['id', 'site', 'title', 'company', 'location', 'date_posted', 'job_url', 'salary',
-            'is_remote', 'job_type']
+            'is_remote', 'job_type', 'description']
 
 # La API acepta al menos 1000 por pagina (medido); 100 deja paginas pequenas y pocas.
 OFERTAS_POR_PAGINA = 100
@@ -142,6 +142,9 @@ def _a_oferta(aviso):
         # 'Hibrido' no es remoto: solo cuenta la modalidad 100% remota.
         'is_remote': (modalidad == 'remoto') if modalidad else None,
         'job_type': aviso.get('tipoTrabajo'),
+        # Viene gratis en la misma respuesta de la busqueda: es de donde salen las
+        # habilidades que pide el puesto. historico.py la separa a descripciones.csv.
+        'description': aviso.get('detalle'),
         '_dias': (date.today() - publicada).days if publicada else None,
     }
 
