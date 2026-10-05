@@ -43,6 +43,10 @@ CIUDADES = [
 ]
 HORAS_DIARIO = 24        # ventana de la busqueda agendada
 RESULTADOS_DIARIO = 100  # por sitio y por ciudad
+# Radio de LinkedIn e Indeed alrededor de cada ciudad. Con 50 km la busqueda de Quito
+# traia Latacunga (17 ofertas el 05/10, casi todas pasantias). 25 km deja Quito y sus
+# valles (Sangolqui, Tumbaco, Cumbaya). Computrabajo y Multitrabajos no usan radio.
+DISTANCIA_DIARIO = 25
 ENVIAR_SI_VACIO = False  # si no hay nada nuevo, por defecto no manda correo
 
 # Buzon que deja ingesta_google.py. Google corre aparte (Selenium, ~13 min) y no puede
@@ -169,6 +173,7 @@ def ejecutar_diario():
             ubicacion=ciudad,
             resultados=RESULTADOS_DIARIO,
             horas=HORAS_DIARIO,
+            distancia=DISTANCIA_DIARIO,
         )
         if fallidos and df.empty:
             fallos_por_ciudad += 1
