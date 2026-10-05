@@ -58,6 +58,9 @@ def construir(csv=CSV, base=BASE):
     # Las derivadas son el motivo de que esto valga mas que importar el CSV a pelo:
     # en Power BI se convierten en segmentadores sin escribir una sola medida DAX.
     df['familia'] = df['title'].fillna('').map(reporte.familia_puesto)
+    # Las ~20 formas de "empresa oculta" en una sola, para contar y agrupar empresas.
+    df['empresa'] = df['company'].map(reporte.empresa_normalizada)
+    df['empresa_confidencial'] = (df['empresa'] == reporte.CONFIDENCIAL).astype(int)
     puntuados = df['title'].fillna('').map(perfil.puntuar)
     df['puntaje'] = [p for p, _ in puntuados]
     df['terminos'] = [', '.join(t) for _, t in puntuados]
@@ -99,8 +102,8 @@ CONSULTAS = [
      'SELECT puntaje, title, company, ciudad FROM ofertas '
      'WHERE puntaje > 0 ORDER BY puntaje DESC LIMIT 5'),
     ('Empresas que mas repiten',
-     'SELECT company, COUNT(*) AS ofertas FROM ofertas '
-     "WHERE company != '' GROUP BY company HAVING ofertas > 1 "
+     'SELECT empresa, COUNT(*) AS ofertas FROM ofertas '
+     "WHERE empresa != '' AND empresa_confidencial = 0 GROUP BY empresa HAVING ofertas > 1 "
      'ORDER BY ofertas DESC LIMIT 5'),
 ]
 

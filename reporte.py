@@ -8,6 +8,7 @@ El HTML de aqui tambien usa tablas con estilos en linea: un correo no admite fle
 grid, <style> en el head, SVG ni imagenes.
 """
 import html
+import re
 import unicodedata
 from collections import Counter
 from datetime import date
@@ -134,6 +135,27 @@ def familia_puesto(titulo):
         if any(clave in n for clave in claves):
             return familia
     return OTROS
+
+
+CONFIDENCIAL = 'Confidencial'
+
+# Como escriben los sitios una empresa oculta. Medido el 05/10/2026 sobre el historico:
+# ~20 variantes en 230 filas ("Confidential Careers", "Anonimo", "Importante empresa del
+# sector Automotriz"...). NO entra "grupo empresarial": "Grupo Empresarial Dinova" existe.
+_EMPRESA_OCULTA = re.compile(
+    r'confiden|anonim|^importante (empresa|entidad|compania)|^empresa (del|de) |'
+    r'^empresa$|^cliente anonimo')
+
+
+def empresa_normalizada(empresa):
+    """La empresa tal cual, o 'Confidencial' si es una de las formas de ocultarla.
+
+    Para agrupar en Power BI y contar empresas distintas sin que cada variante de
+    "confidencial" cuente como una empresa mas. company cruda se conserva aparte.
+    """
+    if pd.isna(empresa) or not str(empresa).strip():
+        return None
+    return CONFIDENCIAL if _EMPRESA_OCULTA.search(_norm(empresa).strip()) else str(empresa).strip()
 
 
 def es_oferta_real(titulo):
