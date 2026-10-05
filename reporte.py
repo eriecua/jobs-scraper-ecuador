@@ -193,8 +193,11 @@ def _listado(df):
             # Por que puntuo asi: los terminos que coincidieron, y el nivel si el titulo
             # lo dice. El nivel es solo etiqueta, no entra en el puntaje.
             detalle = [empresa]
-            if getattr(fila, 'nivel', None):
-                detalle.append(html.escape(str(fila.nivel)))
+            # pd.notna y no un 'if' a secas: el nivel vacio llega como NaN, que es
+            # verdadero, y el correo imprimia "nan" junto a la empresa.
+            nivel = getattr(fila, 'nivel', None)
+            if pd.notna(nivel) and nivel:
+                detalle.append(html.escape(str(nivel)))
             if getattr(fila, 'terminos', None):
                 detalle.append(html.escape(', '.join(fila.terminos)))
 
