@@ -26,6 +26,16 @@ from graficos import AZUL, FONDO, GRIS, GRIS_BORDE, TEXTO, VERDE
 # Familias de puesto. El orden importa: gana la primera que coincida, asi que las mas
 # especificas van antes que las genericas ('desarrollador' antes que 'ingeniero').
 FAMILIAS = {
+    # Gana la PRIMERA familia que coincide: estas dos van antes que TI, Produccion e
+    # Ingenieria para que "Ingeniero de Calidad" o "Analista de Procesos de Produccion" no
+    # se pierdan alli. Calidad solo por la palabra en el titulo (decision del usuario: los
+    # titulos de procesos y calidad se mezclan, y la palabra es lo unico inequivoco).
+    'Calidad': ['calidad'],
+    # Se compara por subcadena: los terminos cortos llevan espacios para ser palabra
+    # completa ('lean' esta dentro de 'cleaning', 'process' dentro de 'processor').
+    'Procesos/Mejora continua': ['procesos', 'mejora continua', 'excelencia operacional',
+                                 'excelencia operativa', ' lean ', 'kaizen', ' process ',
+                                 'continuous improvement', ' bpm '],
     'Desarrollador/TI': ['desarrollador', 'developer', 'programador', 'software', 'fullstack',
                          'full stack', 'backend', 'frontend', 'devops', 'qa ', 'sre',
                          'scrum master', 'tech lead', 'quality assurance', 'help desk',
