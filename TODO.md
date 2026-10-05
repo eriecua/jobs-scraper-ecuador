@@ -4,70 +4,66 @@ Pendientes del scraper, con lo que ya se investigó de cada uno para no repetir 
 
 ---
 
-## 1. Añadir Multitrabajos como cuarto sitio
+## 1. Multitrabajos — módulo hecho, falta integrarlo
 
-**Por qué:** hay ofertas buenas ahí que no aparecen en LinkedIn, Indeed ni Computrabajo.
+`multitrabajos.py` scrapea bien por su cuenta (misma firma `scrape()` que
+`computrabajo.py`). **No está en `SITIOS_DEFECTO` ni en `buscar()`**: integrarlo en
+`buscador.py` (y revisar `main.py`/correo) quedó para otro bloque, por decisión del usuario.
 
-### Lo que ya se investigó (15/08/2026)
+### Cómo se consigue (05/10/2026) — sin Playwright
 
-El sitio funciona perfecto en el navegador — 6 ofertas para "ingeniero industrial", con
-título, empresa, ciudad, fecha y modalidad. **El problema es solo conseguir la página.**
-
-Cualquier cliente HTTP recibe **siempre los mismos 64.533 bytes**, un cascarón sin datos.
-El navegador tiene 142.789 bytes en el DOM. Probado y descartado:
-
-| Intento | Resultado |
-|---|---|
-| `requests` con cabeceras de navegador | 64.533 bytes, cascarón |
-| `tls_client` (ya viene con jobspy), 4 perfiles | 64.533 bytes, cascarón |
-| `curl_cffi`, 5 perfiles de impersonación | 64.533 bytes, cascarón |
-| Buscar una API en las peticiones de red | Solo analítica: Facebook, New Relic, `cdn-cgi/rum` |
-| `__NEXT_DATA__` / estado precargado | No existe |
-
-No es huella TLS ni cabeceras: eso ya lo cubrían `tls_client` y `curl_cffi`. El contenido
-se pinta en el cliente o lo libera Cloudflare tras un desafío JavaScript (se ve
-`__cfBeacon` en `window`).
-
-**Extraer los datos, en cambio, sería fácil.** La página trae un JSON-LD `ItemList` con
-título y URL de cada oferta, y las tarjetas del DOM tienen el resto:
-
-```json
-{"@type":"ItemList","itemListElement":[
-  {"position":1,"name":"Ingeniero Automatización Industrial",
-   "url":"https://www.multitrabajos.com/empleos/ingeniero-automatizacion-industrial-1118393380.html"}]}
-```
+El HTML es un cascarón, pero la web llama a una API JSON que responde con HTTP plano:
 
 ```
-Actualizado hace 4 días
-Ingeniero Automatización Industrial
-Confidencial
-Guayaquil, Guayas · Presencial
+POST https://www.multitrabajos.com/api/avisos/searchV2?pageSize=100&page=0&sort=RECIENTES
+x-site-id: BMEC · Content-Type: application/json · Referer: https://www.multitrabajos.com/
+User-Agent de navegador COMPLETO (con "Mozilla/5.0" a secas devuelve cuerpo vacío)
+{"filtros": [...], "query": "ingeniero industrial"}
+-> {number, size, total, content: [{id, titulo, empresa, confidencial, localizacion,
+    fechaPublicacion "dd-mm-aaaa", modalidadTrabajo, tipoTrabajo, ...}]}
 ```
 
-### Cómo hacerlo
+- **Filtros**: `{"id": <tipo>, "value": <idSemantico>}`. El catálogo con conteos sale de
+  `GET /api/avisos/filtersV2` (mismos headers). Se usa el `idSemantico`, **no** el `id`
+  numérico (con `"77"` da 0). Un valor inválido devuelve 200 con 0 ofertas, sin error.
+  - Provincia: `{"id":"provincia","value":"ecuador|pichincha"}`
+  - Ciudad: `{"id":"localidad","value":"ecuador|pichincha|quito"}` (slug provincia|ciudad)
+  - Fecha: `{"id":"dias_fecha_publicacion","value":"publicacion-hoy"}`; también
+    `publicacion-menor-a-{2..6}-dias`, `-7-dias`, `-15-dias`, `-1-mes`. Formatos
+    `now-1d/d` o `menor-a-1-dia` dan 0.
+- **Orden**: query param `sort=RECIENTES` (por defecto `RELEVANTES`).
+- **Paginación**: `page` desde 0. `pageSize=1000` funciona (sin término: 1000 de 5579);
+  el módulo usa 100.
+- **URL de la oferta**: `/empleos/<slug-titulo>[-<slug-empresa>]-<id>.html` (empresa
+  omitida si `confidencial`), igual que `makeFichaAvisoURL` del bundle. El sitio resuelve
+  por el id final y redirige a la canónica. Ojo: el HTML responde 200 **para cualquier
+  id** (SPA), así que un 200 no prueba nada; se comprobó en el navegador que abre la
+  oferta correcta, y `GET /api/candidates/fichaAvisoNormalizada/<id>` da 200 con la
+  oferta (id inválido: 500).
 
-Un `multitrabajos.py` hermano de `computrabajo.py`, con la misma firma `scrape()` y las
-mismas columnas, para que `buscador.py` solo tenga que añadirlo a `SITIOS_DEFECTO`.
+### Verificación (05/10/2026, Python 3.12 de uv con `requirements.txt`)
 
-La única decisión real es cómo obtener el HTML:
-
-| Opción | Coste | Riesgo |
+| Llamada | Filas | Web/API |
 |---|---|---|
-| **Playwright** (navegador headless) | ~300 MB de dependencia, ~10-15s por búsqueda | Bajo: es un navegador de verdad |
-| Cookie `cf_clearance` capturada a mano | Barato | Caduca en horas; no sirve para una tarea agendada |
-| `cloudscraper` | Barato de probar | Cloudflare lo detecta desde hace años |
+| `scrape('ingeniero industrial')` | 7 | 7 |
+| `scrape('analista', resultados=300)` (3 páginas) | 226, ids únicos | 226 |
+| `scrape('analista', 'Quito, Ecuador')` | 102, todas Quito | 102 |
+| `scrape('', 'Santo Domingo de los Tsachilas, Ecuador')` | 176 | 176 (faceta) |
+| `scrape('', 'Guayaquil, Ecuador', dias_max=1)` | 8, fechas 04-05/10 | — |
+| `scrape('', dias_max=7, resultados=2000)` | 685, 28/09–05/10 | 684 (faceta) |
 
-**Estimación: 2-3 horas con Playwright.** Una hora es el parseo (comparable a
-Computrabajo); el resto es integrar el navegador y que no rompa la tarea agendada.
+Campos llenos: id/title/company/location/date_posted/job_url/is_remote/job_type 100%,
+salary 0% (la API no lo trae). `company` = "Confidencial" cuando la oferta lo es.
 
-**Antes de empezar**, media hora probando `cloudscraper` y una petición con Playwright a
-pelo: si Playwright funciona sin más, el resto es mecánico.
+### Pendiente para integrarlo
 
-### Lo que hay que sopesar
-
-Meter un navegador headless cambia la naturaleza del proyecto: hoy son tres módulos de
-HTTP plano que corren en segundos. Playwright añade peso, lentitud y una pieza más que
-puede fallar a las 08:00 sin que nadie mire.
+- `buscador.py`: añadir a `SITIOS_DEFECTO` y una rama en `buscar()` como la de Computrabajo
+  (`dias_max=math.ceil(horas/24)`). `CIUDADES` de `main.py` ya se traducen solas vía
+  `ubicaciones.normalizar()`; no hace falta tabla de slugs aparte.
+- `ubicaciones.py` ya reconoce sus formatos ("Cantón Duran", "Santo Domingo de los
+  Colorados", "Morona-Santiago", parroquias de Quito/Guayaquil). Siguen sin ciudad los
+  cantones que no están en `CANTONES` (Montecristi, Sangolquí, Machachi...): se quedan
+  con la provincia, que es lo que pide el diseño.
 
 ---
 

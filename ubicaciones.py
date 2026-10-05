@@ -89,6 +89,16 @@ ALIAS = {
     ('tumbaco', 'pichincha'): 'quito',
     ('calderon', 'pichincha'): 'quito',
     ('conocoto', 'pichincha'): 'quito',
+    # Parroquias rurales de Quito y Guayaquil (vistas en Multitrabajos y LinkedIn, 05/10/2026).
+    ('pifo', 'pichincha'): 'quito',
+    ('yaruqui', 'pichincha'): 'quito',
+    ('checa', 'pichincha'): 'quito',
+    ('tababela', 'pichincha'): 'quito',
+    ('guayllabamba', 'pichincha'): 'quito',
+    ('amaguana', 'pichincha'): 'quito',
+    ('calacali', 'pichincha'): 'quito',
+    ('chongon', 'guayas'): 'guayaquil',
+    ('posorja', 'guayas'): 'guayaquil',
 }
 
 # Indeed abrevia la PROVINCIA a una letra: 'Eloy Alfaro, G, EC'. Antes esta tabla mapeaba
@@ -115,6 +125,8 @@ def _norm(texto):
     """Minusculas sin acentos y con espacios simples, para comparar sin sorpresas."""
     limpio = unicodedata.normalize('NFKD', str(texto).lower())
     limpio = limpio.encode('ascii', 'ignore').decode()
+    # Multitrabajos escribe 'Morona-Santiago'.
+    limpio = limpio.replace('-', ' ')
     return re.sub(r'\s+', ' ', limpio).strip()
 
 
