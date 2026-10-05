@@ -20,8 +20,9 @@ from perfil import _coincide, _norm
 # Grupo -> habilidad -> como se escribe en las ofertas. Los sinonimos se escriben con
 # naturalidad (mayusculas, tildes): se normalizan igual que el texto. Se buscan como
 # palabra completa, asi que 'excel' no coincide con 'excelente'.
-# Calidad (ISO 9001, Six Sigma) fuera a proposito: no le interesa al usuario. 5S si,
-# porque es de mejora continua, que es lo que el sabe.
+# Lista medida el 05/10/2026 sobre ofertas reales de las dos familias en Multitrabajos:
+# las anadidas aparecen en el 7-70% de esas ofertas. "Eficiencia" y "productividad" salen
+# mucho pero no son habilidades, por eso no estan.
 HABILIDADES = {
     'Datos / BI': {
         'SQL': ['SQL', 'SQL Server', 'MySQL', 'PostgreSQL', 'T-SQL', 'PL/SQL'],
@@ -31,16 +32,49 @@ HABILIDADES = {
         'Tableau': ['Tableau'],
         'ETL': ['ETL'],
         'Estadística': ['estadística', 'estadístico', 'statistics', 'statistical'],
+        'Dashboards': ['dashboard', 'dashboards', 'tableros', 'tablero de control',
+                       'visualización de datos'],
+        'Reportería': ['reportes', 'reportería', 'informes de gestión'],
+        'Bases de datos': ['base de datos', 'bases de datos', 'modelado de datos',
+                           'data warehouse'],
     },
     'Procesos / mejora continua': {
         'Mejora continua': ['mejora continua', 'continuous improvement'],
         'Lean': ['Lean', 'Lean Manufacturing'],
         '5S': ['5S', '5 S'],
         'Kaizen': ['Kaizen'],
-        'BPMN': ['BPMN', 'Bizagi'],
-        'KPI': ['KPI', 'KPIs', 'indicadores de gestión'],
+        'BPMN': ['BPMN', 'Bizagi', 'Visio'],
+        # "Procedimientos" a secas tambien es "cumplir procedimientos": solo cuentan las
+        # frases de documentar, que es la habilidad.
+        'Documentación de procesos': [
+            'documentación de procesos', 'documentar procesos', 'documentar procedimientos',
+            'levantamiento de procesos', 'levantar procesos', 'mapeo de procesos',
+            'flujogramas', 'diagramas de flujo', 'manual de procedimientos',
+            'manuales de procedimientos', 'elaboración de procedimientos',
+            'actualización de procedimientos', 'instructivos'],
+        'Optimización de procesos': ['optimización de procesos', 'optimizar procesos',
+                                     'rediseño de procesos'],
+        'Gestión por procesos (BPM)': ['gestión por procesos', 'BPM',
+                                       'business process management'],
+        'Automatización': ['automatización', 'automatizar', 'RPA', 'Power Automate'],
+        'Análisis de causa raíz': ['causa raíz', 'Ishikawa', '5 porqués', '5 por qués'],
+        'Gestión de proyectos': ['gestión de proyectos', 'Scrum', 'metodologías ágiles'],
+        'KPI': ['KPI', 'KPIs', 'indicadores'],
+    },
+    # Referencia: el usuario no lo trabaja, pero quiere ver cuanto lo pide el mercado
+    # (en ofertas de procesos, Six Sigma ~23% e ISO 9001 ~19%). Filtrable en Power BI.
+    'Calidad (referencia)': {
+        'Six Sigma': ['Six Sigma', 'Seis Sigma', 'Green Belt', 'Black Belt'],
+        'ISO 9001': ['ISO 9001', 'ISO 9001:2015'],
+        'Sistema de gestión de calidad': ['sistema de gestión de calidad', 'SGC'],
+        'BPM (manufactura)': ['buenas prácticas de manufactura'],
     },
 }
+
+# En Ecuador "BPM" tambien es Buenas Practicas de Manufactura (industria alimentaria).
+# Medido: 1 de cada 7 "BPM" en ofertas de procesos. Si la oferta lo dice, BPM a secas no
+# cuenta como gestion por procesos (va a 'BPM (manufactura)').
+AMBIGUOS = {'BPM': 'buenas prácticas de manufactura'}
 
 NOMBRE = 'habilidades.csv'
 COLUMNAS = ['id', 'habilidad', 'grupo']
@@ -49,10 +83,11 @@ COLUMNAS = ['id', 'habilidad', 'grupo']
 def detectar(texto):
     """[(habilidad, grupo), ...] que aparecen en el texto."""
     t = _norm(texto)
+    ignorar = {s for s, aviso in AMBIGUOS.items() if _coincide(_norm(aviso), t)}
     return [(habilidad, grupo)
             for grupo, habilidades in HABILIDADES.items()
             for habilidad, sinonimos in habilidades.items()
-            if any(_coincide(_norm(s), t) for s in sinonimos)]
+            if any(_coincide(_norm(s), t) for s in sinonimos if s not in ignorar)]
 
 
 def regenerar(dir_datos='data'):
