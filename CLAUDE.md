@@ -31,8 +31,11 @@ compilarlo. `scrap.cmd` usa `uv` para provisionar Python 3.12 aparte.
 Prueba por `scrap.cmd`, **no** con `uv run --with paquete ...` a mano. Ese atajo enmascara
 dependencias que faltan en `requirements.txt` (ya pasó con `requests` y `beautifulsoup4`).
 
-Lo que no necesita red (`reporte.py`, `perfil.py`, `historico.py`) se prueba offline
-contra `data/historico.csv`.
+Lo que no necesita red se prueba con **`.	est.cmd`** (pytest, `tests/`, ~1 s): índice,
+familias, habilidades, fechas de Computrabajo, mapeo de Multitrabajos, ubicaciones,
+histórico y descripciones. Correr antes de cada commit. Una prueba nueva tiene que
+**fallar** con el error que cubre: comprobarlo reintroduciéndolo (ya hubo una que pasaba
+igual con el fallo dentro).
 
 Códigos de salida: `0` ok · `1` todos los sitios fallaron · `2` no se pudo enviar el correo ·
 `3` no se pudo escribir `data/historico.csv` (lo tienes abierto en Excel).
