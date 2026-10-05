@@ -2,6 +2,25 @@
 
 Pendientes del scraper, con lo que ya se investigó de cada uno para no repetir trabajo.
 
+## 0. Abiertos, por prioridad (05/10/2026)
+
+Objetivos del scraper, acordados con el usuario: (1) postular a lo que mejor encaja,
+(2) saber qué habilidades piden esos puestos, (3) analizar el mercado en Power BI
+(el modelo y el ETL los hace él, desde `data/historico.csv` y los CSV ligados por `id`).
+
+1. **Confiabilidad.** Si Gmail falla al enviar (código 2), las ofertas ya quedaron
+   marcadas como vistas en el histórico y no vuelven a salir: solo quedan en un
+   `diario_*.csv`. Propuesta: *outbox* (columna `notificado_en`; el correo manda lo no
+   notificado y lo marca solo si el envío salió bien) y una tabla `corridas` (sitio,
+   ciudad, ofertas, error, segundos) para avisar de un sitio que lleva varias corridas en 0.
+2. **Descripciones, fase 2.** Computrabajo y LinkedIn no la traen en la búsqueda (una
+   petición más por oferta). Pedirla solo para las ofertas nuevas que encajen.
+3. **Staging sin decidir.** `graficos_generados/*.png`, `scrapjobs/scrapjobs.sqlproj`,
+   `analisis_*.py`, `terminos_por_ciudad.py`, `.vscode/tasks.json` siguen en staging sin
+   commit. Los PNG son salida generada; los scripts de análisis repiten a mano los
+   términos de `perfil.py` en `LIKE`.
+4. **No rellenar** las filas viejas del histórico sin empresa/fecha: decisión del usuario.
+
 ---
 
 ## 1. Multitrabajos — integrado (05/10/2026)
@@ -64,6 +83,8 @@ salary 0% (la API no lo trae). `company` = "Confidencial" cuando la oferta lo es
   ("12 de 121 puestos nuevos te encajan").
 - **Abiertos:** duplicados entre sitios si el título varía; gráfico "Por sitio" con
   `limite=5` ya tiene exactamente 5 sitios.
+- **Confirmado en el correo real** de las 14:00 del 05/10: Multitrabajos 48 ofertas,
+  Cuenca 30.
 
 ### Visto de paso al probar
 
@@ -93,8 +114,10 @@ LinkedIn empezará a bloquear.
 
 ### Lo que se descartó al investigarlo
 
-- **Google Jobs**: jobspy devuelve 0 ofertas **en todo el mundo** (probado en Nueva York y
-  Londres). Google desmanteló el widget que raspaba. No es un problema de Ecuador.
+- **Google Jobs por jobspy**: devuelve 0 ofertas **en todo el mundo** (probado en Nueva
+  York y Londres). Google desmanteló el widget que raspaba. Google SÍ entra, pero por
+  otro camino: un proyecto aparte con Selenium deja un CSV y `ingesta_google.py` lo
+  ingiere (ver su docstring).
 - **Glassdoor**: jobspy devuelve 0 hasta en EE.UU. (error 400, "location not parsed").
   Además su lista de países no incluye Ecuador, Colombia, Perú, Chile ni Uruguay. Raspar
   directo choca con Cloudflare + CAPTCHA.
@@ -109,14 +132,11 @@ LinkedIn empezará a bloquear.
 
 ## 3. Pendientes menores
 
-- **Ver el correo en el celular.** Nunca se verificó; en escritorio y modo oscuro se ve
-  bien.
-- **Decidir `FAMILIAS_EXCLUIDAS`.** El gráfico sigue mostrando ~24 ofertas de Ventas que
-  `EXCLUIDOS` no atrapa porque su título no lleva ninguna palabra de la lista
-  ("impulsador", "merchandiser", "promotor"). Poner `['Ventas']` las barre todas.
-- **No hay pruebas automáticas.** Todo se verificó con scripts desechables. Si algo se
-  rompe, no hay nada que avise salvo un correo que no llega. `historico.py`, `perfil.py` y
-  `reporte.py` son testeables sin red.
+- ~~Ver el correo en el celular~~ — visto por el usuario el 05/10: se lee bien. De ahí
+  salió el "nan" junto a la empresa, ya arreglado.
+- ~~Decidir `FAMILIAS_EXCLUIDAS`~~ — decidido el 05/10: el correo muestra todo y el índice
+  ordena; solo se excluyen las pasantías (`NIVELES_EXCLUIDOS`).
+- ~~No hay pruebas automáticas~~ — `.	est.cmd`, 47 casos sin red (05/10).
 - **Vigilar el bloqueo de LinkedIn.** Con tres corridas diarias se triplican las
   peticiones. Si aparece `[AVISO] linkedin fallo`, bajar a dos corridas o reducir
   `RESULTADOS_DIARIO`.
