@@ -257,10 +257,12 @@ def ejecutar_diario():
         print('[OK] Nada nuevo: no se envia correo')
         return EXIT_OK
 
-    ruta = historico.guardar(nuevos, 'diario') if not nuevos.empty else None
-    asunto, cuerpo = reporte.construir(nuevos, horas=HORAS_DIARIO)
+    # Lo PRIMERO tras saber que hay algo que avisar: el historico ya las marco como vistas,
+    # y si guardar() o construir() revientan, sin outbox se perderian.
     if not nuevos.empty:
         _guardar_correo_pendiente(nuevos)
+    ruta = historico.guardar(nuevos, 'diario') if not nuevos.empty else None
+    asunto, cuerpo = reporte.construir(nuevos, horas=HORAS_DIARIO)
     if not correo.enviar(asunto, cuerpo, ruta):
         print(f'[AVISO] el correo no salio: sus ofertas quedan en {CORREO_PENDIENTE} '
               f'y se reintentan en la proxima corrida')

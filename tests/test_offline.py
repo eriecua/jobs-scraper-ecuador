@@ -249,8 +249,11 @@ def diario(tmp_path, monkeypatch):
     enviados = []
 
     def correr(ids, envio_ok=True):
+        # Con los tipos que de verdad devuelve buscar() (fecha y booleano), no todo texto:
+        # el reintento mezcla esto con el outbox, que se relee como texto.
         oferta = _ofertas(*ids).drop(columns=['description']).assign(
-            ciudad='Quito', provincia='Pichincha')
+            ciudad='Quito', provincia='Pichincha', is_remote=False,
+            date_posted=pd.to_datetime('2026-10-05'))
         monkeypatch.setattr(main, 'buscar', lambda **k: (oferta, []))
 
         def enviar(asunto, cuerpo, ruta):
@@ -330,3 +333,20 @@ def test_corridas_rota_no_tumba_la_busqueda(tmp_path, monkeypatch):
     monkeypatch.setattr(buscador, 'RUTA_CORRIDAS', str(tmp_path / 'corridas.csv'))
     df, fallidos = buscador.buscar(sitios=['bien'])
     assert (len(df), fallidos) == (1, [])
+
+
+def test_correo_que_revienta_al_armarse_no_pierde_ofertas(diario, monkeypatch):
+    construir = main.reporte.construir
+
+    def revienta(*a, **k):
+        raise ValueError('fallo al armar el correo')
+    monkeypatch.setattr(main.reporte, 'construir', revienta)
+    with pytest.raises(ValueError):
+        diario(['mt-1', 'mt-2'])
+    assert os.path.exists(main.CORREO_PENDIENTE)
+
+    # Arreglado el fallo, la siguiente corrida las manda junto con las nuevas: fecha y
+    # booleano reales mezclados con lo que el outbox relee como texto.
+    monkeypatch.setattr(main.reporte, 'construir', construir)
+    codigo, adjunto = diario(['mt-3'])
+    assert (codigo, adjunto) == (main.EXIT_OK, ['mt-1', 'mt-2', 'mt-3'])

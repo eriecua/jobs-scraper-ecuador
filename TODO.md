@@ -11,7 +11,10 @@ Objetivos del scraper, acordados con el usuario: (1) postular a lo que mejor enc
 1. ~~**Confiabilidad.**~~ Hecho el 05/10: outbox `data/correo_pendiente.csv` (un correo
    fallido se reenvía en la siguiente corrida) y `data/corridas.csv` (ofertas, error y
    segundos por sitio y búsqueda). **Falta:** avisar en el correo cuando un sitio lleve
-   varias corridas en 0, leyendo `corridas.csv`.
+   varias corridas en 0, leyendo `corridas.csv` (esperar unos días de datos para tener
+   con qué comparar). Caso límite conocido: si TODOS los sitios devuelven 0 sin error,
+   el diario sale en `if not partes` antes de mirar el outbox; lo pendiente se retrasa
+   a la siguiente corrida, no se pierde.
 2. **Descripciones, fase 2.** Computrabajo y LinkedIn no la traen en la búsqueda (una
    petición más por oferta). Pedirla solo para las ofertas nuevas que encajen.
 3. **Staging sin decidir.** `graficos_generados/*.png`, `scrapjobs/scrapjobs.sqlproj`,
