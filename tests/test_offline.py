@@ -299,3 +299,34 @@ def test_busqueda_suelta_no_toca_el_outbox(diario, monkeypatch):
     monkeypatch.setattr(main, 'buscar', lambda **k: (_ofertas('mt-9').drop(columns=['description']), []))
     assert main.main() == main.EXIT_OK
     assert open(main.CORREO_PENDIENTE, encoding='utf-8-sig').read() == antes
+
+
+# --- buscador.py: registro de corridas ---------------------------------------------------
+
+import buscador  # noqa: E402
+
+
+def test_corridas_anota_cada_sitio(tmp_path, monkeypatch):
+    def bien(**k):
+        return _ofertas('mt-1', 'mt-2').drop(columns=['description'])
+
+    def mal(**k):
+        raise ConnectionError('429 Too Many Requests')
+
+    monkeypatch.setattr(buscador, 'FUENTES_PROPIAS', {'bien': bien, 'mal': mal})
+    monkeypatch.setattr(buscador, 'RUTA_CORRIDAS', str(tmp_path / 'corridas.csv'))
+    df, fallidos = buscador.buscar(ubicacion='Quito, Ecuador', sitios=['bien', 'mal'])
+    assert (len(df), fallidos) == (2, ['mal'])
+
+    filas = pd.read_csv(tmp_path / 'corridas.csv', dtype=str).set_index('sitio')
+    assert filas.loc['bien', 'ofertas'] == '2' and pd.isna(filas.loc['bien', 'error'])
+    assert filas.loc['mal', 'ofertas'] == '0' and '429' in filas.loc['mal', 'error']
+
+
+def test_corridas_rota_no_tumba_la_busqueda(tmp_path, monkeypatch):
+    monkeypatch.setattr(buscador, 'FUENTES_PROPIAS',
+                        {'bien': lambda **k: _ofertas('mt-1').drop(columns=['description'])})
+    (tmp_path / 'corridas.csv').mkdir()  # una carpeta donde va el archivo: no se puede escribir
+    monkeypatch.setattr(buscador, 'RUTA_CORRIDAS', str(tmp_path / 'corridas.csv'))
+    df, fallidos = buscador.buscar(sitios=['bien'])
+    assert (len(df), fallidos) == (1, [])

@@ -81,6 +81,7 @@ Consecuencias, antes de diseñar nada encima:
 | Términos del índice de compatibilidad | `INTERES` / `DESEABLES` (ordenan) y `EXCLUIDOS` / `FAMILIAS_EXCLUIDAS` / `NIVELES_EXCLUIDOS` (quitan) en `perfil.py` |
 | Familias de puesto del gráfico | `FAMILIAS` en `reporte.py` |
 | Dónde va la descripción | `NOMBRE_DESCRIPCIONES` en `historico.py` (se separa al escribir) |
+| Registro por sitio y búsqueda (ofertas, error, segundos) | `data/corridas.csv`, lo escribe `buscar()` en `buscador.py` |
 | Habilidades que se miden | `HABILIDADES` en `habilidades.py` (regenera `data/habilidades.csv` entero) |
 
 Añadir una ciudad exige tocar **dos** archivos. Computrabajo no entiende `"Quito, Ecuador"`:

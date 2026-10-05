@@ -1,6 +1,9 @@
 r"""Busqueda de empleos en todos los sitios, devolviendo un solo DataFrame."""
 import logging
 import math
+import os
+import time
+from datetime import datetime
 
 import pandas as pd
 from jobspy import scrape_jobs
@@ -21,6 +24,23 @@ FUENTES_PROPIAS = {
 }
 
 SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo', 'multitrabajos')
+
+# Una fila por sitio y busqueda: cuantas ofertas trajo, si fallo y cuanto tardo. Es lo que
+# permite ver con datos si LinkedIn esta bloqueando o un sitio lleva dias en 0 (y en Power
+# BI, que sitio aporta que). Solo se anade; nunca se reescribe.
+RUTA_CORRIDAS = os.path.join('data', 'corridas.csv')
+
+
+def _anotar_corrida(fila, ruta=None):
+    """Anade una fila a corridas.csv. Nunca falla: es observacion, no el trabajo."""
+    ruta = ruta or RUTA_CORRIDAS
+    try:
+        os.makedirs(os.path.dirname(ruta), exist_ok=True)
+        existe = os.path.exists(ruta)
+        pd.DataFrame([fila]).to_csv(ruta, mode='a', index=False, header=not existe,
+                                    encoding='utf-8' if existe else 'utf-8-sig')
+    except Exception as e:
+        print(f'   [AVISO] no se pudo anotar en {ruta}: {e!r}')
 
 # La descripcion completa (la traen gratis Indeed y Multitrabajos) se deja pasar: de ahi
 # salen las habilidades que pide el puesto. No llega al historico: historico.actualizar()
@@ -45,6 +65,9 @@ def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=Non
     vacios = []
 
     for sitio in sitios:
+        inicio = time.monotonic()
+        error = ''
+        parcial = None
         try:
             if sitio in FUENTES_PROPIAS:
                 parcial = FUENTES_PROPIAS[sitio](
@@ -78,6 +101,13 @@ def buscar(termino='', ubicacion='Ecuador', resultados=100, horas=None, tipo=Non
         except Exception as e:
             print(f"   [AVISO] {sitio} fallo: {e}")
             fallidos.append(sitio)
+            error = str(e)[:200]
+        _anotar_corrida({
+            'fecha_hora': datetime.now().isoformat(timespec='seconds'),
+            'sitio': sitio, 'ubicacion': ubicacion, 'termino': termino,
+            'ofertas': len(parcial) if parcial is not None and not error else 0,
+            'error': error, 'segundos': round(time.monotonic() - inicio, 1),
+        })
 
     # Los sitios propios devuelven 200 con cero ofertas cuando un slug o filtro no cuadra,
     # sin dar error. El motivo concreto lo sabe cada modulo, que ya avisa por su cuenta;
