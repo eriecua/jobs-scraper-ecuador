@@ -323,6 +323,29 @@ def test_todas_guarda_tambien_las_ya_vistas(diario, monkeypatch):
     assert {'ciudad', 'provincia'} <= set(guardado.columns)
 
 
+# --- a_sqlite.py: la base para analizar -------------------------------------------------
+
+import a_sqlite  # noqa: E402
+
+
+def test_analizar_una_fila_por_id(tmp_path, monkeypatch):
+    # historico.actualizar() vuelve a anadir el mismo id si la oferta se republica pasados
+    # DIAS_CADUCIDAD dias. Con el id repetido, Power BI no puede relacionar analisis.csv
+    # (lado uno) con habilidades.csv (lado varios).
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'data').mkdir()
+    oferta = _ofertas('mt-1', 'mt-2').drop(columns=['description'])
+    repost = oferta.iloc[[0]].assign(visto_primera_vez='2026-12-20')
+    pd.concat([oferta.assign(visto_primera_vez='2026-10-05'), repost]).to_csv(
+        a_sqlite.CSV, index=False)
+
+    df, _ = a_sqlite.construir()
+
+    assert sorted(df['id']) == ['mt-1', 'mt-2']
+    assert df.set_index('id').loc['mt-1', 'visto_primera_vez'] == '2026-10-05'  # la primera
+    assert pd.read_csv(a_sqlite.PARA_BI, dtype=str)['id'].is_unique
+
+
 # --- buscador.py: registro de corridas ---------------------------------------------------
 
 import buscador  # noqa: E402

@@ -55,6 +55,11 @@ def construir(csv=CSV, base=BASE):
         if columna not in df.columns:
             df[columna] = ''
     df = df[COLUMNAS].copy()
+    # Una fila por id. El historico repite el id cuando una oferta se republica pasados
+    # DIAS_CADUCIDAD dias (asi decide que vuelve a ser noticia), pero aqui el id es la clave
+    # que liga con habilidades.csv y descripciones.csv: repetido, Power BI no puede crear la
+    # relacion uno a varios. Se queda la primera, para que visto_primera_vez siga siendo cierto.
+    df = df.drop_duplicates(subset='id', keep='first')
 
     # Las derivadas son el motivo de que esto valga mas que importar el CSV a pelo:
     # en Power BI se convierten en segmentadores sin escribir una sola medida DAX.

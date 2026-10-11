@@ -87,6 +87,9 @@ Hay dos tablas:
    **Cargar**.
 2. Para las habilidades, repite con `data/habilidades.csv`.
 3. En la vista **Modelo**, relaciona `analisis[id]` con `habilidades[id]` (uno a varios).
+   Funciona porque `analisis.csv` trae una sola fila por `id`. El histórico sí puede
+   repetirlo: una oferta republicada pasados 60 días vuelve a entrar con el mismo `id`, y
+   `analizar` se queda con la primera vez que se vio.
 4. Las columnas calculadas (`familia`, `nivel`, `ciudad`, `puntaje`...) sirven directamente
    como segmentadores, sin escribir medidas DAX.
 
