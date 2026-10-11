@@ -178,6 +178,19 @@ def actualizar(df, busqueda, ruta=RUTA):
     return nuevos
 
 
+def todas(df, busqueda):
+    """Todas las ofertas de una corrida, vistas o no, con la forma de las de actualizar().
+
+    Para --todas. Sin esto, repetir una busqueda deja "Nada nuevo" y ningun CSV. Pero la
+    misma vacante publicada en dos sitios sigue saliendo una sola vez, igual que en el
+    CSV de nuevas, y la descripcion sigue yendo aparte (descripciones.csv).
+    """
+    df = _asegurar_columnas(df.copy())
+    df['id'] = df['id'].astype(str)
+    df = df[~_clave(df).duplicated()]
+    return df.assign(busqueda=busqueda).drop(columns=['description'], errors='ignore')
+
+
 def _guardar_descripciones(df, ruta):
     """Anade a descripciones.csv las de las ofertas nuevas que la traen. Nunca falla.
 

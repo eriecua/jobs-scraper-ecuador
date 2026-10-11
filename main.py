@@ -299,6 +299,9 @@ def main():
     parser.add_argument('--distancia', type=int, default=50, help='Radio en km (default: 50)')
     parser.add_argument('--descripcion', action='store_true',
                         help='Incluir la descripcion completa (mucho mas lento)')
+    parser.add_argument('--todas', action='store_true',
+                        help='Guarda en el CSV todas las ofertas encontradas, tambien las ya '
+                             'vistas en corridas anteriores (por defecto, solo las nuevas)')
     parser.add_argument('--diario', action='store_true',
                         help='Reporte agendado: recorre CIUDADES y manda el correo. '
                              'Ignora el resto de opciones (usa la config del archivo)')
@@ -341,10 +344,17 @@ def main():
         return EXIT_OK
 
     etiqueta = ', '.join(terminos) if len(terminos) > 1 else terminos[0]
-    nuevos = _registrar(_consolidar(piezas), etiqueta)
+    consolidado = _consolidar(piezas)
+    nuevos = _registrar(consolidado, etiqueta)
+
+    # El historico se actualiza igual con --todas: lo que cambia es solo que va al CSV.
+    if args.todas:
+        historico.guardar(historico.todas(consolidado, etiqueta), f'todas_{etiqueta}')
+        return EXIT_OK
 
     if nuevos.empty:
-        print("[OK] Nada nuevo: solo se actualizo el historico")
+        print("[OK] Nada nuevo: solo se actualizo el historico. "
+              "Para guardar tambien las ya vistas, repite con --todas")
         return EXIT_OK
 
     historico.guardar(nuevos, f'nuevos_{etiqueta}')

@@ -304,6 +304,25 @@ def test_busqueda_suelta_no_toca_el_outbox(diario, monkeypatch):
     assert open(main.CORREO_PENDIENTE, encoding='utf-8-sig').read() == antes
 
 
+def test_todas_guarda_tambien_las_ya_vistas(diario, monkeypatch):
+    oferta = _ofertas('mt-1', 'mt-2').drop(columns=['description'])
+    # La misma vacante que mt-2 publicada en otro sitio: otro id, otra URL, misma clave.
+    doble = oferta.iloc[[1]].assign(id='in-2', site='indeed', job_url='https://y/2')
+    monkeypatch.setattr(main, 'buscar', lambda **k: (pd.concat([oferta, doble]), []))
+
+    monkeypatch.setattr(sys, 'argv', ['main.py', 'analista'])
+    assert main.main() == main.EXIT_OK
+    # Segunda corrida igual: sin --todas no habria CSV, porque nada es nuevo.
+    monkeypatch.setattr(sys, 'argv', ['main.py', 'analista', '--todas'])
+    assert main.main() == main.EXIT_OK
+
+    archivos = [f for f in os.listdir('data') if f.startswith('todas_')]
+    assert len(archivos) == 1
+    guardado = pd.read_csv(os.path.join('data', archivos[0]), dtype=str)
+    assert sorted(guardado['id']) == ['mt-1', 'mt-2']  # la doble, una sola vez
+    assert {'ciudad', 'provincia'} <= set(guardado.columns)
+
+
 # --- buscador.py: registro de corridas ---------------------------------------------------
 
 import buscador  # noqa: E402
