@@ -38,8 +38,10 @@ contenido, cada uno para una herramienta:
 | `data/historico.db` | Consultar con SQL (DB Browser for SQLite) |
 | `data/analisis.csv` | Power BI o Excel, sin instalar nada más |
 
-Puedes correrlo las veces que quieras: se reconstruye entero cada vez. Hazlo de nuevo
-cuando quieras ver los datos más recientes. Al terminar imprime un resumen (ofertas por
+Puedes correrlo las veces que quieras: las tablas `ofertas` y `habilidades` se rehacen
+enteras cada vez. Hazlo de nuevo cuando quieras ver los datos más recientes. Si creaste
+otras tablas tuyas dentro de `historico.db`, esas no se tocan, así que no se actualizan
+solas: consulta sobre `ofertas`. Al terminar imprime un resumen (ofertas por
 ciudad, qué se busca, las que más te encajan, empresas que más publican).
 
 Además de las columnas que trae cada sitio, añade otras ya calculadas, listas para
