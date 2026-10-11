@@ -1,7 +1,5 @@
 # Jobs Scraper Ecuador
 
-[Read in English](README.md)
-
 ![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-green)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![Windows | macOS | Linux](https://img.shields.io/badge/plataforma-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)

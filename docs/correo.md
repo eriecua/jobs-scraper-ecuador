@@ -4,7 +4,7 @@ El scraper recorre tus ciudades varias veces al día, compara con lo que ya vist
 manda por Gmail **solo las ofertas nuevas**, ordenadas según lo bien que encajan con tu
 perfil. Si no hay nada nuevo, no te escribe.
 
-Antes de seguir, haz la [instalación](../README.es.md#instalación) y prueba una búsqueda
+Antes de seguir, haz la [instalación](../README.md#instalación) y prueba una búsqueda
 normal (uso 1): así sabes que el scraper funciona antes de sumarle el correo.
 
 - [1. Tus datos de Gmail](#1-tus-datos-de-gmail)

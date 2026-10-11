@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 Scraper de empleos (LinkedIn + Indeed + Computrabajo + Multitrabajos) con histórico incremental y reporte
-diario por correo. El uso está en `README.md` (inglés) y `README.es.md` (español), cortos:
-instalación y los tres usos (CSV, correo, análisis). El detalle, solo en español, en `docs/` (`correo.md`, `analisis.md`, `configuracion.md`,
+diario por correo. El uso está en `README.md`, corto: instalación y los tres usos (CSV,
+correo, análisis). El detalle, en `docs/` (`correo.md`, `analisis.md`, `configuracion.md`,
 `como-funciona.md`); aquí solo lo que muerde.
 
 ## Ejecutar
@@ -115,10 +115,11 @@ uno de los tres usos va a `docs/`. Si se añade una opción o un archivo, se doc
 `docs/` y en el README solo si cambia el paso a paso. Al mover texto, comprobar que los
 enlaces y anclajes entre README y `docs/` siguen resolviendo.
 
-Los dos README son el mismo texto en dos idiomas: un cambio en uno va también al otro. Se
-escribe primero el inglés y se traduce, porque la skill `humanizer` (quita marcas de texto
-escrito por IA: negritas en todo, rayas, frases de relleno) tiene sus patrones en inglés.
-Los enlaces desde `docs/` apuntan a `README.es.md`, cuyas anclas son en español.
+Todo en español, a propósito: el programa (opciones, mensajes, archivos), las guías y el
+público son de Ecuador. Se probó un README en inglés y se descartó: el lector se topaba con
+español en cuanto pasaba de la portada, y obligaba a mantener dos archivos. El README pasó
+por la skill `humanizer`: al editarlo, sin negritas decorativas, sin rayas y sin frases de
+relleno.
 
 El repo es **público** (licencia MIT). El `README.md` es para desconocidos que lo
 descargan: nada de rutas de esta máquina ni datos de `data/`. `.gitattributes` saca
