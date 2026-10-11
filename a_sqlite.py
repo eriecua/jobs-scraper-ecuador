@@ -1,6 +1,7 @@
-r"""MVP: convierte data/historico.csv en una base SQLite para analizar en Power BI.
+r"""Opcional: convierte data/historico.csv en una base SQLite para analizar en Power BI.
 
-    .\scrap.cmd --help          (no, esto se corre aparte:)
+Se corre aparte del scraper:
+
     uv run --python 3.12 --with-requirements requirements.txt --no-project python a_sqlite.py
 
 NO toca el scraper. Lee el CSV y escribe data/historico.db al lado. Se puede correr
@@ -11,12 +12,9 @@ Escribe dos archivos con el MISMO contenido, porque cada uno sirve para algo:
     data/analisis.csv   para Power BI. Lo lee al doble clic, sin drivers.
     data/historico.db   para consultar en SQL con DB Browser for SQLite.
 
-Por que los dos, y no solo la base: en esta maquina el ODBC de SQLite NO funciona.
-Los tres drivers estan instalados y sus DLL existen, pero cualquier conexion muere
-con 'HY000 connect failed', tambien desde PowerShell, asi que no es cosa de Power BI.
-Se probaron las tres variantes del driver y rutas con y sin espacios: todas fallan
-igual. Antes de volver a intentarlo por ahi, comprobar si falta el runtime de Visual
-C++ o si el instalador metio un DLL de 32 bits registrado como de 64.
+Por que los dos, y no solo la base: Power BI solo lee SQLite a traves de un driver
+ODBC, que hay que instalar aparte y no siempre conecta (en la maquina donde se hizo
+esto fallaba con 'HY000 connect failed'). El CSV no necesita nada.
 
 Lo que de verdad aporta esto sobre el historico.csv de siempre no es el formato: son
 las columnas derivadas -familia, puntaje, nivel, motivo_exclusion-, que en Power BI
