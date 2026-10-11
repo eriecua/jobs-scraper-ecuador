@@ -3,604 +3,160 @@
 ![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-green)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![Windows | macOS | Linux](https://img.shields.io/badge/plataforma-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+[![Pruebas](https://github.com/eriecua/jobs-scraper-ecuador/actions/workflows/pruebas.yml/badge.svg)](https://github.com/eriecua/jobs-scraper-ecuador/actions/workflows/pruebas.yml)
 
-Busca empleos en **LinkedIn, Indeed, Computrabajo y Multitrabajos**, los compara contra
-un histórico y guarda en CSV **solo lo que no habías visto antes**. Agendado, te manda
-cada día un correo con las ofertas nuevas, agrupadas por ciudad y ordenadas según lo bien
-que encajan con tu perfil.
+Busca empleos en **LinkedIn, Indeed, Computrabajo y Multitrabajos** a la vez y los guarda
+en un solo CSV. Hecho para **Ecuador**.
 
-- **Un solo CSV para los cuatro sitios**, con las mismas columnas. Si la misma vacante
-  aparece en varios sitios, se guarda una vez.
-- **Solo novedades**: un histórico local recuerda lo que ya viste.
-- **Índice de compatibilidad**: puntúa cada oferta con tus términos (`perfil.py`) y
-  esconde los temas que no quieres ver.
-- **Correo diario** con gráficos que se leen bien en el celular, y el CSV adjunto.
-- **Nunca pierde una oferta**: si Gmail falla, el correo se reenvía en la siguiente corrida.
+## ¿Qué quieres hacer?
 
-## Alcance
+Son tres usos independientes. Solo necesitas el primero; los otros dos se suman encima.
 
-- **Ecuador.** Las ciudades, provincias y rutas de Computrabajo y Multitrabajos son las de
-  Ecuador. Otros países necesitarían adaptar `ubicaciones.py` y `computrabajo.py`.
-- **Windows, macOS y Linux.** Cada sistema tiene sus lanzadores: `.cmd` en Windows, `.sh`
-  en Mac y Linux. Las diferencias están en [Mac y Linux](#mac-y-linux). Las pruebas
-  corren en los tres sistemas en cada cambio.
-- **Perfil de ejemplo.** `perfil.py` y las ciudades de `main.py` vienen configurados para
-  un perfil de Datos/BI y Procesos en Quito, Guayaquil, Santo Domingo y Cuenca. Cámbialos
-  por los tuyos (ver [Configurar](#configurar-los-parámetros-del-buscador)).
+| Quiero... | Qué obtienes | Guía |
+|---|---|---|
+| **1. Buscar empleos** | Un CSV con las ofertas, que abres en Excel | [Aquí abajo](#1-buscar-empleos) (5 min) |
+| **2. Recibir un correo diario** | Cada día, las ofertas nuevas ordenadas según tu perfil | [Correo diario](#2-recibir-un-correo-diario) |
+| **3. Analizar el mercado** | Consultas SQL y Power BI: qué se pide, dónde, quién contrata | [Analizar](#3-analizar-el-mercado) |
 
-## Inicio rápido
+## Instalación
 
-1. **Descarga** el proyecto: botón verde *Code → Download ZIP*, o el zip de la última
-   versión en *Releases*. Descomprímelo en una carpeta sin acentos.
-2. **Instala [uv](https://docs.astral.sh/uv/getting-started/installation/)**, lo único
-   que hace falta. En Windows, desde PowerShell:
+1. **Descarga** el zip de la [última versión](https://github.com/eriecua/jobs-scraper-ecuador/releases/latest)
+   (*Source code (zip)*) y descomprímelo en una carpeta sin acentos.
+
+2. **Instala [uv](https://docs.astral.sh/uv/)**, lo único que hace falta. No tienes que
+   instalar Python: uv descarga la versión correcta la primera vez (tarda un par de
+   minutos, solo esa vez).
+
+   Windows (PowerShell):
    ```powershell
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
-   En Mac o Linux, desde la Terminal (o `brew install uv`):
+   Mac y Linux (Terminal):
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-   No hace falta instalar Python: la primera corrida descarga Python 3.12 y las
-   dependencias en un entorno aparte (tarda un par de minutos, solo esa vez).
-3. **Prueba una búsqueda** desde la carpeta del proyecto. En Windows (PowerShell):
-   ```powershell
-   .\scrap.cmd "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 20
-   ```
-   En Mac o Linux:
-   ```bash
-   ./scrap.sh "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 20
-   ```
-   Las ofertas nuevas quedan en `data/nuevos_*.csv`, que se abre con Excel o Numbers.
-4. **Para el correo diario**, copia `.env.example` como `.env` y rellénalo con tu Gmail y
-   una [contraseña de aplicación](#credenciales). Pruébalo con `.\scrap_diario.cmd`
-   (Windows) o `./scrap_diario.sh` (Mac/Linux).
-5. **Agéndalo** para que corra solo: [en Windows](#agendarlo) o
-   [en Mac y Linux](#agendarlo-en-mac-y-linux).
+   Cierra y vuelve a abrir la terminal para que reconozca `uv`.
 
-> **La primera corrida reporta todo como nuevo**, porque el histórico está vacío. A partir
-> de la segunda solo verás lo que de verdad salió desde la anterior.
+3. **Abre la terminal en la carpeta del proyecto.** En Windows: abre la carpeta en el
+   Explorador, escribe `powershell` en la barra de direcciones y pulsa Enter. En Mac: abre
+   la Terminal, escribe `cd ` (con un espacio), arrastra la carpeta a la ventana y pulsa
+   Enter.
+
+## 1. Buscar empleos
+
+Windows:
+```powershell
+.\scrap.cmd "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 20
+```
+Mac y Linux:
+```bash
+./scrap.sh "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 20
+```
+
+El resultado queda en la carpeta `data/`, en un archivo como
+`nuevos_Data_Analyst_20261010_204819.csv`. Ábrelo con Excel:
+
+| site | title | company | ciudad | date_posted | job_url |
+|---|---|---|---|---|---|
+| linkedin | Marketing Analyst, New Business and M&A | Toptal | Quito | 2026-10-08 | linkedin.com/jobs/view/… |
+| indeed | Senior Accounting Analyst | PayJoy | Quito | 2026-10-09 | ec.indeed.com/viewjob?… |
+| computrabajo | Analista de marketing | CEO Marketing USA | Quito | 2026-10-07 | ec.computrabajo.com/… |
+| multitrabajos | Junior Data Entry Analyst | Human Brand Consulting | Quito | 2026-10-02 | multitrabajos.com/… |
+
+Si la misma vacante sale en dos sitios, aparece una sola vez.
+
+### Solo ofertas nuevas (y cómo ver todas)
+
+El scraper **recuerda lo que ya te mostró** (en `data/historico.csv`). Si repites la misma
+búsqueda, el CSV trae solo lo que salió desde la vez anterior, y si no hay nada nuevo verás
+`Nada nuevo` y no se crea archivo. Para guardar **todas** las ofertas encontradas, vistas o
+no, añade `--todas`:
+
+```powershell
+.\scrap.cmd "Data Analyst" --ubicacion "Quito, Ecuador" --todas
+```
+
+Ese archivo se llama `todas_*.csv`.
+
+### Opciones
+
+| Opción | Por defecto | Qué hace |
+|---|---|---|
+| `"puesto"` | — | Qué buscar. Obligatorio. Ej: `"Data Analyst"`, `"Contador"` |
+| `-t "p1" "p2"` | — | Varios puestos en una corrida, en vez de uno |
+| `--ubicacion` | `Ecuador` | Ciudad, provincia o país. Ej: `"Guayaquil, Ecuador"` |
+| `--resultados` | `100` | Cuántas ofertas **por sitio** |
+| `--todas` | no | Guarda también las ofertas ya vistas en corridas anteriores |
+| `--horas` | — | Solo ofertas de las últimas N horas. Ej: `--horas 72` |
+| `--tipo` | — | `fulltime`, `parttime`, `contract` o `internship` |
+| `--sitios` | los cuatro | Ej: `--sitios linkedin,computrabajo` |
+| `--distancia` | `50` | Radio en km alrededor de la ciudad (LinkedIn e Indeed) |
+| `--pais` | `ecuador` | País para Indeed |
+| `--descripcion` | no | Pide también la descripción completa (más lento); va a `data/descripciones.csv` |
+
+Más ejemplos:
+```powershell
+.\scrap.cmd "Ingeniero Industrial" --horas 168 --tipo fulltime
+.\scrap.cmd -t "Data Analyst" "Data Scientist" --ubicacion "Guayaquil, Ecuador"
+```
+
+## 2. Recibir un correo diario
+
+El scraper recorre tus ciudades varias veces al día y te manda por Gmail las ofertas
+nuevas, ordenadas según lo bien que encajan con lo que buscas, con gráficos y el CSV
+adjunto.
+
+1. **Pon tus datos de Gmail.** Copia `.env.example` como `.env` y rellénalo con tu correo y
+   una *contraseña de aplicación* de Google ([cómo sacarla](docs/correo.md#1-tus-datos-de-gmail)).
+2. **Di qué buscas.** Edita `CIUDADES` en `main.py` y tus palabras clave en `perfil.py`.
+   Vienen con un perfil de ejemplo (Datos/BI en Quito, Guayaquil, Santo Domingo y Cuenca).
+3. **Pruébalo:** `.\scrap_diario.cmd` (Windows) o `./scrap_diario.sh` (Mac/Linux). Te debe
+   llegar el correo.
+4. **Agéndalo** para que corra solo, en Windows o en Mac/Linux.
+
+Guía completa paso a paso: **[docs/correo.md](docs/correo.md)**.
+
+## 3. Analizar el mercado
+
+Todo lo que el scraper ve se acumula en `data/historico.csv`. Con un comando lo conviertes
+en una base de datos para consultar con SQL o abrir en Power BI.
+
+1. **Junta datos:** usa el scraper unos días (uso 1 o 2). Cuantas más corridas, más
+   mercado ves.
+2. **Prepara la base:** `.\analizar.cmd` (Windows) o `./analizar.sh` (Mac/Linux). Crea
+   `data/historico.db` (SQL) y `data/analisis.csv` (Power BI).
+3. **Consulta:** abre `data/historico.db` con [DB Browser for SQLite](https://sqlitebrowser.org/)
+   (gratis) y pega una consulta de [`consultas.sql`](consultas.sql): las ofertas más
+   recientes que coinciden con tus palabras, las que mejor te encajan, qué habilidades
+   piden, qué empresas contratan más, por ciudad, por semana...
+
+Guía completa paso a paso, con Power BI: **[docs/analisis.md](docs/analisis.md)**.
+
+## Problemas frecuentes
+
+| Ves esto | Qué significa | Qué hacer |
+|---|---|---|
+| `uv` no se reconoce | La terminal no ve uv todavía | Cierra y abre la terminal. Si sigue, reinstala uv |
+| `Nada nuevo` | Ya habías visto todas esas ofertas | Normal. Usa `--todas` para guardarlas igual |
+| `[AVISO] <sitio> fallo` | Ese sitio no respondió; los demás siguen | Nada, si otros trajeron datos. Si LinkedIn falla seguido, te bloqueó por pedir mucho: espera unas horas |
+| `'X' no esta en el mapa de ubicaciones de Computrabajo` | Esa ciudad no está configurada para Computrabajo | Ver [añadir una ciudad](docs/configuracion.md#añadir-una-ciudad) |
+| `Faltan GMAIL_USUARIO...` | No hay `.env` o está incompleto | Ver [docs/correo.md](docs/correo.md#1-tus-datos-de-gmail) |
+| `Posible cambio de estructura en Computrabajo` | El sitio cambió su página | Hay que actualizar `computrabajo.py`; abre un *issue* |
+| `permission denied` (Mac/Linux) | El zip perdió el permiso de ejecución | `chmod +x *.sh` |
+| Error al guardar `historico.csv` (código 3) | Lo tienes abierto en Excel | Ciérralo y repite |
+
+Los códigos de salida y el resto de mensajes están en [docs/correo.md](docs/correo.md#códigos-de-salida).
+
+## Más documentación
+
+- [docs/correo.md](docs/correo.md): correo diario, agendado en Windows y Mac/Linux.
+- [docs/analisis.md](docs/analisis.md): SQL, Power BI, qué datos hay y qué no se puede medir.
+- [docs/configuracion.md](docs/configuracion.md): tu perfil, ciudades, sitios y categorías.
+- [docs/como-funciona.md](docs/como-funciona.md): histórico, cada sitio, archivos del proyecto, pruebas.
 
 > No uses `pip install -r requirements.txt` con tu Python: `python-jobspy` exige
-> `numpy==1.26.3`, que no tiene versión precompilada para Python 3.13 o superior e
-> intentaría compilarla. Los lanzadores usan `uv` justamente para evitarlo.
-
-## Manual de procedimiento
-
-Cómo se usa esto en el día a día. Hay dos formas de lanzarlo, según lo que necesites.
-
-### 1. El diario automático (no haces nada)
-
-Una vez agendado, el PC recorre las ciudades de `CIUDADES` (en `main.py`) a las horas que
-elegiste, compara con el histórico y te manda un correo **solo si hay ofertas nuevas**.
-
-Al abrirlo verás, en este orden: cuántas ofertas encontró y cuántas te encajan, los tres
-gráficos, y debajo la lista ordenada por compatibilidad con el link de cada oferta.
-El adjunto es el CSV con todo.
-
-**Si no llega correo**, puede ser que no hubiera nada nuevo (normal) o que fallara. Para
-distinguirlo, abre el Programador de tareas y mira el último resultado, o córrelo a mano
-con `.\scrap_diario.cmd` y lee el código de salida.
-
-### 2. La línea de comandos (búsquedas puntuales)
-
-Para buscar algo concreto fuera del horario del diario:
-
-```powershell
-.\scrap "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 50
-```
-
-Las opciones están en la tabla de la sección **Uso**, más abajo.
-
-### Qué hacer si algo falla
-
-| Síntoma | Qué significa | Qué hacer |
-|---|---|---|
-| `[AVISO] <sitio> fallo` | Ese sitio no respondió; los demás siguen | Nada, si otros trajeron datos. Si se repite en LinkedIn, puede ser bloqueo por exceso de peticiones: espera unas horas |
-| `'X' no esta en el mapa de ubicaciones de Computrabajo` | La ciudad no tiene slug | Añade su slug a `SLUGS_UBICACION` (ver configuración) |
-| `computrabajo: recorriendo 12 provincias` | Normal: buscaste sin puesto ni ciudad | Nada. Tarda ~16s en vez de ~2s |
-| `Faltan GMAIL_USUARIO...` | No hay credenciales | Revisa el `.env`. No scrapea nada, así que no se pierde ninguna oferta |
-| `Posible cambio de estructura en Computrabajo` | Cambió el HTML del sitio | Hay que actualizar los selectores en `computrabajo.py` |
-| Código de salida `1` | Fallaron todos los sitios | Revisa tu conexión |
-| Código de salida `2` | Scrapeó bien pero no envió el correo | Nada: quedan en `data/correo_pendiente.csv` y salen en el correo siguiente |
-| Código de salida `3` | No pudo escribir `data/historico.csv` | Ciérralo si lo tienes abierto en Excel y vuelve a correr |
-
-## Configurar los parámetros del buscador
-
-Todo se ajusta editando constantes al principio de cada archivo. No hay ventana para
-esto a propósito: un programa que reescribe su propio código puede dejarlo roto.
-
-### Lo que buscas cada día — `main.py`
-
-```python
-CIUDADES = [
-    'Quito, Ecuador',
-    'Santo Domingo de los Tsachilas, Ecuador',
-    'Guayaquil, Ecuador',
-    'Cuenca, Ecuador',
-]
-HORAS_DIARIO = 24        # ventana de tiempo del diario
-RESULTADOS_DIARIO = 100  # por sitio Y por ciudad: 4 ciudades x 4 sitios x 100 = 1.600 máx.
-ENVIAR_SI_VACIO = False  # True = te escribe aunque no haya nada nuevo
-```
-
-> **Añadir una ciudad son dos pasos.** Además de ponerla aquí, hay que darle su slug en
-> `computrabajo.py` (siguiente apartado) o Computrabajo devolverá cero ofertas **sin dar
-> error**.
-
-### Ciudades de Computrabajo — `computrabajo.py`
-
-Computrabajo no entiende `"Quito, Ecuador"`: su ruta es `pichincha-en-quito`.
-
-```python
-SLUGS_UBICACION = {
-    'quito': 'pichincha-en-quito',
-    'guayaquil': 'guayas-en-guayaquil',
-    'cuenca': 'azuay-en-cuenca',
-    ...
-}
-```
-
-Para añadir una: abre `https://ec.computrabajo.com/empleos-en-<slug>` en el navegador. Si
-salen ofertas, el slug sirve. El formato es `<provincia>-en-<ciudad>`, sin tildes y con
-guiones.
-
-### Tus términos de búsqueda — `perfil.py`
-
-Las listas que deciden el puntaje de compatibilidad. **Es lo primero que tienes que
-cambiar**: vienen con un perfil de ejemplo (Datos/BI y Procesos). Pon los términos de los
-puestos que tú buscas, y según vayas viendo los correos irás afinando qué te interesa y
-qué no.
-
-```python
-INTERES   = {'analista': 30, 'datos': 30, ...}   # suben la oferta, NO la filtran
-DESEABLES = {'python': 15, 'sql': 15, ...}       # herramientas, suman encima
-EXCLUIDOS = ['ventas', 'sales', 'chofer', ...]   # vetan la oferta entera
-FAMILIAS_EXCLUIDAS = []                          # categorias enteras: 'Ventas', ...
-```
-
-Escribe cada término como **palabra completa**: `estadistic` no coincide con
-"estadística".
-
-Después de cambiarlas, comprueba el efecto sobre las ofertas que ya tienes:
-
-```powershell
-uv run --python 3.12 --with-requirements requirements.txt --no-project python -c "import pandas as pd, perfil; d=pd.read_csv('data/historico.csv',dtype=str); p=d['title'].fillna('').map(lambda t: perfil.puntuar(t)[0]); print('encajan:', (p>=30).sum(), 'de', len(d)); [print(f'{v:4} {t[:60]}') for t,v in sorted(zip(d['title'].fillna(''),p), key=lambda x:-x[1])[:15]]"
-```
-
-Te imprime cuántas encajan y las 15 mejores. Si aparecen puestos que no te interesan,
-añade la palabra a `EXCLUIDOS`; si falta alguno que sí, añádela a `INTERES`.
-
-### Sitios — `buscador.py`
-
-```python
-SITIOS_DEFECTO = ('linkedin', 'indeed', 'computrabajo', 'multitrabajos')
-FUENTES_PROPIAS = {...}   # sitios que no cubre jobspy, con su modulo propio
-```
-
-### Ciudades y provincias — `ubicaciones.py`
-
-Cada sitio escribe la misma ciudad de forma distinta. En el histórico hay **19
-textos** para 6 ciudades reales:
-
-```
-'Quito, Pichincha, Ecuador'   'Quito, Pichincha'   'Quito, P, EC'
-'Quito Canton, Pichincha, Ecuador'   'Pichincha, Ecuador'
-```
-
-`normalizar()` los convierte a un par **(ciudad, provincia)**, y ese par es lo que se
-guarda en el CSV y lo que agrupa el gráfico del correo. Una sola tabla para los dos.
-
-```python
-CANTONES = {'quito': ('Quito', 'pichincha'), 'duran': ('Duran', 'guayas'), ...}
-ALIAS    = {('eloy alfaro', 'guayas'): 'duran', ...}   # parroquias, no cantones
-```
-
-Tres cosas que conviene saber antes de editarlo:
-
-- **Ciudad y provincia son cosas distintas.** Durán y Samborondón son cantones propios, no
-  Guayaquil. Si el texto solo nombra la provincia, la ciudad queda **vacía** y el gráfico
-  dice `Pichincha (prov.)`: no se inventa la capital.
-- **Se trabaja por componentes**, no buscando en la cadena entera. Es lo que permite que
-  `"Esmeraldas, Esmeraldas"` (cantón y provincia se llaman igual) y `"La Concordia, Santo
-  Domingo de los Tsáchilas"` (el nombre de un cantón está dentro del de la provincia) den
-  la respuesta correcta.
-- **`ALIAS` lleva la provincia en la clave** a propósito: hay un *Eloy Alfaro* en Guayas
-  (parroquia de Durán), otro cantón en Esmeraldas y una parroquia en Manta. Sin la
-  provincia no se pueden distinguir.
-
-Para añadir una ciudad, basta su entrada en `CANTONES`. Esto es independiente de
-`SLUGS_UBICACION`, que es lo que Computrabajo necesita para *buscar*.
-
-### Categorías de los gráficos — `reporte.py`
-
-`FAMILIAS` agrupa los títulos (Ventas, Datos/BI, Logística…). Gana la primera coincidencia,
-así que las específicas van **antes** que las genéricas. `NO_OFERTAS` esconde del correo
-las publicaciones que no describen un puesto.
-
-### Correo y agenda
-
-El destinatario y las credenciales van en `.env`, no en el código. La hora del envío se
-cambia en el Programador de tareas de Windows, no aquí.
-
-## Uso
-
-En Windows, desde **PowerShell o cmd** (no Git Bash: la invocación del `.cmd` falla ahí
-por la interoperabilidad con rutas de Windows). En Mac y Linux, las mismas opciones con
-`./scrap.sh` en lugar de `.\scrap`:
-
-```powershell
-.\scrap "Data Analyst"                                   # lo mínimo
-.\scrap "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 200
-.\scrap "Ingeniero Industrial" --horas 168 --tipo fulltime
-.\scrap "Data Analyst" --descripcion                     # trae description, ~3x mas lento
-.\scrap -t "Data Analyst" "Data Scientist"               # varios puestos en una corrida
-```
-
-Hace falta al menos un puesto. Para traer **todos** los puestos de una ciudad, sin filtrar
-por título, está el diario (`--diario`).
-
-| Opción | Default | Qué hace |
-|---|---|---|
-| `termino` | — | Puesto a buscar (posicional) |
-| `-t`, `--termino` | — | Uno o varios puestos, en vez del posicional |
-| `--ubicacion` | `Ecuador` | Ciudad, provincia o país |
-| `--resultados` | `100` | Cuántos empleos **por sitio** |
-| `--sitios` | `linkedin,indeed,computrabajo,multitrabajos` | Sitios separados por coma |
-| `--pais` | `ecuador` | País que usa Indeed |
-| `--horas` | — | Solo ofertas de las últimas N horas |
-| `--tipo` | — | `fulltime`, `parttime`, `contract`, `internship` |
-| `--distancia` | `50` | Radio en km |
-| `--descripcion` | off | Incluye la descripción completa de cada oferta |
-| `--diario` | off | Reporte agendado por correo (ver abajo) |
-
-`--descripcion` dispara una petición extra **por cada empleo**: 7s → 22s para 20 ofertas.
-Déjalo apagado salvo que necesites el texto.
-
-## Los archivos
-
-Cada uno hace un solo trabajo:
-
-| Archivo | Qué hace |
-|---|---|
-| `main.py` | Configuración del diario, orquestación y línea de comandos |
-| `buscador.py` | Busca en todos los sitios y junta los resultados |
-| `computrabajo.py` | Raspa Computrabajo (jobspy no lo cubre) |
-| `multitrabajos.py` | Consulta Multitrabajos por su API JSON (jobspy no lo cubre) |
-| `historico.py` | Decide qué es nuevo y guarda los CSV |
-| `ubicaciones.py` | Convierte la ubicación cruda de cada sitio en ciudad + provincia |
-| `perfil.py` | Puntúa cada oferta contra lo que buscas |
-| `habilidades.py` | Saca de las descripciones qué habilidades pide cada oferta |
-| `reporte.py` | Arma el correo |
-| `graficos.py` | Las barras y cifras del correo, en HTML |
-| `correo.py` | Lo envía por Gmail |
-| `scrap.cmd` / `scrap_diario.cmd` | Lanzadores para Windows |
-| `scrap.sh` / `scrap_diario.sh` | Lanzadores para Mac y Linux |
-| `scrap_diario_oculto.vbs` | Lanza el diario sin abrir ventana (para el agendado en Windows) |
-| `test.cmd`, `test.sh`, `tests/` | Pruebas |
-| `a_sqlite.py`, `ingesta_google.py`, `scrap_google.cmd` | [Extras opcionales](#extras-opcionales) |
-
-## Salida e histórico
-
-Cada corrida escribe **solo las ofertas nuevas** en
-`data/nuevos_<etiqueta>_<timestamp>.csv`, con las columnas de jobspy. Las principales:
-
-`site`, `title`, `company`, `location`, `ciudad`, `provincia`, `date_posted`, `job_type`,
-`job_url`, `is_remote`, `min_amount`, `max_amount`, `currency`, `company_industry`,
-`description`, `salary`.
-
-`ciudad` y `provincia` las añade `ubicaciones.py` a partir de `location`, que se conserva
-cruda por si hay que depurar un caso raro. Son las columnas por las que se filtra en
-Excel: `location` trae 19 formas distintas de escribir 6 ciudades.
-
-En el CSV del diario hay además `ciudad_busqueda`, y **no es lo mismo que `ciudad`**: la
-primera dice qué se buscó, la segunda qué dice la oferta. Una búsqueda en Quito devuelve
-legítimamente ofertas de Samborondón.
-
-Cada sitio llena las que puede: LinkedIn e Indeed dan el salario en `min_amount`/
-`max_amount`; Computrabajo lo da como texto en `salary`. `date_posted` sí queda
-unificada como fecha en los tres.
-
-La columna `description` **no entra en el histórico**: son ~1.800 caracteres por oferta.
-Se guarda aparte en `data/descripciones.csv` (`id`, `description`, una línea por oferta),
-solo para las ofertas nuevas que la traen: Multitrabajos e Indeed, que la mandan en la
-misma búsqueda. En Power BI se relaciona con el histórico por `id`. `--descripcion` pide
-además la de LinkedIn en una corrida suelta (una petición más por oferta).
-
-Se guarda en `utf-8-sig` para que Excel abra los acentos bien al doble clic.
-
-Todo lo visto se acumula en `data/historico.csv`, que es lo que permite saber qué es
-nuevo. Una oferta se considera repetida si coinciden **empresa + título + ciudad** (así
-la misma vacante en Quito y en Guayaquil cuenta como dos) y si se vio hace menos de
-`DIAS_CADUCIDAD` días (60 por defecto): pasado ese plazo, un repost vuelve a aparecer.
-Si borras el histórico, la próxima corrida te devolverá todo como nuevo.
-
-## Computrabajo
-
-jobspy no soporta Computrabajo, así que `computrabajo.py` raspa el HTML directamente y
-devuelve las mismas columnas que los demás sitios. Diferencias a tener en cuenta:
-
-- **La ubicación va por un mapa de slugs.** Computrabajo no entiende `"Quito, Ecuador"`:
-  la ruta es `pichincha-en-quito`. El mapa `SLUGS_UBICACION` en `computrabajo.py` trae
-  las ciudades grandes de Ecuador. Una ciudad que no esté ahí devuelve **200 con cero
-  ofertas**, sin error, así que el scraper avisa cuando eso pasa y los demás sitios sí
-  trajeron algo. Para añadir una ciudad, agrega su slug al mapa.
-- **No existe página de "todo el país".** `/empleos`, `/trabajo` y `/ofertas-de-trabajo`
-  redirigen a la portada, y `/empleos-en-ecuador` responde 200 con cero ofertas. Cuando
-  buscas sin puesto y sin ciudad (`--ubicacion Ecuador`, que es el default), el scraper
-  **recorre las 12 provincias** una por una y se queda con las más recientes. Tarda ~16s
-  frente a los ~2s de una ciudad concreta. Con un puesto sí hay URL de país
-  (`trabajo-de-<puesto>`), así que ese caso sigue siendo rápido.
-- **`--horas` se redondea a días.** Computrabajo solo publica la antigüedad como "Hace 3
-  días", no la hora exacta. `--horas 24` se traduce a "último 1 día".
-- **El salario viene como texto** (`"790,00 US$ (Mensual)"`) en la columna `salary`, no
-  como `min_amount`/`max_amount` numéricos.
-- Va con reintentos, backoff y una pausa de ~2s entre páginas para no hacerse bloquear;
-  por eso es más lento que los otros dos.
-- Si Computrabajo cambia su HTML, los selectores dejarían de coincidir. El scraper avisa
-  (`Posible cambio de estructura`) cuando más de la mitad de las ofertas salen sin
-  empresa o sin ubicación, en vez de devolver filas vacías en silencio.
-
-### Códigos de salida
-
-Importan si lo agendas: dicen si falló de verdad o si simplemente no había ofertas.
-
-| Código | Significado |
-|---|---|
-| `0` | Corrida OK (con o sin ofertas nuevas) |
-| `1` | Todos los sitios fallaron |
-| `2` | El scrapeo funcionó pero el correo no se pudo enviar (se reintenta en la siguiente corrida) |
-| `3` | No se pudo escribir `data/historico.csv` (suele estar abierto en Excel) |
-
-## Reporte diario por correo
-
-`main.py` tiene arriba un bloque de configuración editable:
-
-```python
-CIUDADES = ['Quito, Ecuador', 'Santo Domingo de los Tsachilas, Ecuador', 'Guayaquil, Ecuador', ...]
-HORAS_DIARIO = 24
-RESULTADOS_DIARIO = 100
-ENVIAR_SI_VACIO = False   # si no hay nada nuevo, no manda correo
-```
-
-`--diario` recorre esas ciudades sin filtrar por puesto, actualiza el histórico y manda
-el correo con el CSV adjunto.
-
-### Qué trae el correo
-
-Lo construye `reporte.py`. De arriba abajo: cuatro números grandes (ofertas, cuántas te
-encajan, ciudades, empresas), un gráfico de **ofertas por ciudad**, otro de **qué están
-buscando** (familias de puesto), uno pequeño por sitio, y debajo la lista de ofertas
-agrupada por ciudad, **ordenada por compatibilidad**, con su link.
-
-Los gráficos son barras hechas con tablas y colores de fondo, no imágenes. Un correo no
-ejecuta JavaScript ni dibuja SVG, y un PNG tendría tamaño fijo: se leería mal en el
-celular y arrastraría su fondo blanco al modo oscuro. Las barras en HTML se reajustan al
-ancho y admiten links al lado. Por eso en `reporte.py` no hay flexbox, grid, `<style>`,
-SVG ni imágenes: nada de eso sobrevive en Gmail y Outlook.
-
-Tres cosas que se ajustan a mano en `reporte.py`:
-
-- **Las ubicaciones** ya no se configuran aquí: viven en `ubicaciones.py` (siguiente
-  apartado), que es la misma tabla que rellena las columnas del CSV.
-- **`FAMILIAS`** — agrupa los títulos en Ventas, Datos/BI, Logística, etc. Gana la primera
-  que coincida, así que las específicas van antes que las genéricas. Cubre el **85%**; el
-  resto cae en *Otros*, que siempre se muestra al final aunque sea grande.
-- **`NO_OFERTAS`** — publicaciones que no describen un puesto (`"Trabaja con nosotros"`,
-  `"Postula aquí"`). Son ofertas reales de LinkedIn, no un fallo del scraper. Se ocultan
-  **solo del correo**: siguen en el CSV y en el histórico, y el correo dice al pie cuántas
-  ocultó.
-
-## Índice de compatibilidad (`perfil.py`)
-
-Dos mecanismos con papeles **distintos**, y no conviene confundirlos:
-
-| | Listas | Qué hacen |
-|---|---|---|
-| **Ordenan** | `INTERES`, `DESEABLES` | Suben la oferta en la lista. Nunca la eliminan. |
-| **Quitan** | `EXCLUIDOS`, `FAMILIAS_EXCLUIDAS` | Vetan la oferta entera. |
-
-| Lista | Qué contiene |
-|---|---|
-| `INTERES` | De qué va el puesto que buscas (`analista` 30, `datos` 30, `business intelligence` 30…). **No es obligatorio**: una oferta sin ninguno sale igual, solo que más abajo. |
-| `DESEABLES` | Herramientas que suman encima (`python` 15, `sql` 15, `power bi` 15…). |
-| `EXCLUIDOS` | Temas que no quieres ver (`ventas`, `sales`, `comercial`, `chofer`…). Vetan la oferta. |
-| `FAMILIAS_EXCLUIDAS` | Categorías enteras a descartar (`'Ventas'`, `'Seguridad'`…), usando las `FAMILIAS` de `reporte.py`. Vacía por defecto. |
-
-### Por qué el interés no filtra
-
-Antes `INTERES` se llamaba `NUCLEO` y era obligatorio. Medido sobre el histórico, eso
-mandaba a 0 el **68%** de las ofertas y enterraba cosas que sí servían:
-
-```
-JEFE UNIDAD DE ESTADÍSTICA     ← estadística
-Database Consultant            ← datos
-Oficial de cumplimiento uafe
-```
-
-En una búsqueda dirigida (`.\scrap "Analista de Datos"`) el filtro **ya lo hizo el propio
-sitio**, así que exigirlo otra vez no aporta. En el diario solo servía para perder ofertas
-sin saber cuáles. Ahora el interés ordena y solo `EXCLUIDOS` quita.
-
-### Qué se está ocultando
-
-El pie del correo lo dice siempre, con el término responsable y su recuento:
-
-```
-Se ocultaron 104 publicaciones:
-   97 por tus exclusiones — comercial 37 · ventas 25 · sales 11 · vendedor 7 · ...
-    7 que no describen un puesto ("Trabaja con nosotros")
-```
-
-Así ves qué palabra está recortando y cuánto, y puedes decidir con criterio si sobra.
-Todas siguen en el CSV adjunto.
-
-### Detalles que muerden
-
-- **Escribe los términos como quieras**: `Power BI`, `optimización` o `VBA` funcionan
-  igual que en minúsculas y sin tildes. El código los normaliza al cargar, y avisa si dos
-  entradas resultan ser el mismo término (se queda con el peso más alto).
-- **Los términos se comparan como palabra completa.** Una raíz como `estadistic` **no
-  coincide nunca** con "estadística": hay que escribir cada forma. Por eso `bi` no salta
-  dentro de "combinado" ni `sales` dentro de "Salesforce".
-- **Cuidado con repetir una clave** en el mismo diccionario (`'mejora continua'` dos
-  veces): Python se queda con la última en silencio y el otro peso se pierde. El aviso de
-  duplicados solo detecta las que difieren en mayúsculas o tildes, no las idénticas.
-- **El término más fuerte de `INTERES` cuenta entero y los demás a mitad**, para que
-  "Analista de Datos" no se dispare solo por decir dos palabras del mismo tema.
-- **`NIVELES` es solo etiqueta** (*Junior / Senior / Jefatura / Prácticas*): no suma ni
-  resta, porque muchos títulos no mencionan el nivel y castigarlos por callarlo sería
-  inventar información.
-- **Los gráficos cuentan lo que se muestra**, no el total bruto, para que los números de
-  arriba cuadren con la lista de abajo.
-- Los puntajes son relativos, no una nota sobre 100. Una oferta muy buena ronda 45-72.
-
-### Credenciales
-
-Copia `.env.example` como `.env` (en la misma carpeta) y rellénalo. El `.env` está en
-`.gitignore`: tus credenciales no se suben nunca a git.
-
-```
-GMAIL_USUARIO=tucorreo@gmail.com
-GMAIL_APP_PASSWORD=xxxxxxxxxxxxxxxx
-CORREO_DESTINO=tucorreo@gmail.com
-```
-
-`GMAIL_APP_PASSWORD` es una **contraseña de aplicación** de Google, no la de tu cuenta:
-Cuenta de Google → Seguridad → Verificación en dos pasos → Contraseñas de aplicaciones.
-Sin verificación en dos pasos activada la opción no aparece.
-
-> Guarda el `.env` **sin BOM** (Notepad → Codificación "UTF-8", no "UTF-8 con BOM"). Con
-> BOM la primera línea se lee mal y verás "Faltan GMAIL_USUARIO" aunque esté puesta.
-
-Si `--diario` sale con código **2** después de haber scrapeado (fallo de red al enviar),
-las ofertas de esa corrida quedan en `data/correo_pendiente.csv` y **salen en el correo
-siguiente**, junto con las nuevas. Ese archivo se borra solo tras un envío correcto: no
-lo borres a mano. Si faltan las credenciales, en cambio, ni siquiera scrapea — así no se
-pierde nada.
-
-### Agendarlo
-
-```powershell
-.\scrap_diario.cmd     # probarlo a mano primero
-```
-
-Una vez que llegue el correo, crea la tarea `ScraperEmpleos`, que corre **tres veces al
-día (08:00, 14:00 y 20:00)** y **sin abrir ventana**. Ejecuta esto en PowerShell **desde
-la carpeta del proyecto**:
-
-```powershell
-$dir = (Get-Location).Path
-$accion = New-ScheduledTaskAction -Execute "wscript.exe" `
-          -Argument "`"$dir\scrap_diario_oculto.vbs`"" -WorkingDirectory $dir
-$horas = @((New-ScheduledTaskTrigger -Daily -At 08:00),
-           (New-ScheduledTaskTrigger -Daily -At 14:00),
-           (New-ScheduledTaskTrigger -Daily -At 20:00))
-$ajustes = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-           -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1) -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName "ScraperEmpleos" -Action $accion -Trigger $horas -Settings $ajustes
-```
-
-Para **cambiar las horas** de una tarea ya creada, arma `$horas` con las que quieras y usa
-`Set-ScheduledTask -TaskName "ScraperEmpleos" -Trigger $horas`. Para ver cómo está:
-
-```powershell
-Get-ScheduledTaskInfo -TaskName "ScraperEmpleos"      # ultima ejecucion y resultado
-schtasks /run /tn "ScraperEmpleos"                    # probarla sin esperar
-```
-
-**Por qué un `.vbs` y no el `.cmd` directamente:** un `.cmd` abre siempre su ventana de
-consola, aunque lo lance el Programador de tareas. `scrap_diario_oculto.vbs` lo arranca
-oculto y **devuelve su código de salida**, para que "Último resultado" siga diciendo si
-fue 0, 1, 2 o 3. Sin eso, ocultar la ventana costaría perder el diagnóstico.
-
-Ajustes que lleva la tarea (los pone `$ajustes`):
-
-| Ajuste | Valor | Por qué |
-|---|---|---|
-| `DisallowStartIfOnBatteries` | `False` | Por defecto Windows no ejecuta tareas con el portátil a batería |
-| `StartWhenAvailable` | `True` | Si el PC estaba apagado a esa hora, corre en cuanto arranque |
-| `ExecutionTimeLimit` | 1 hora | Si se cuelga, no queda un proceso zombi |
-| `MultipleInstances` | `IgnoreNew` | Si una corrida se alarga, la siguiente no se solapa |
-
-Corre aunque la terminal esté cerrada, siempre que el PC esté encendido.
-
-> **Por qué no en la nube:** los runners de GitHub Actions usan IPs de datacenter que
-> LinkedIn bloquea con 429, y `historico.csv` obligaría a commitear estado en cada
-> corrida. Haría falta un proxy residencial de pago.
-
-## Mac y Linux
-
-El código Python es el mismo en los tres sistemas; solo cambian los lanzadores:
-
-| Windows | Mac / Linux | Qué hace |
-|---|---|---|
-| `.\scrap.cmd` | `./scrap.sh` | Búsqueda puntual (mismas opciones, ver [Uso](#uso)) |
-| `.\scrap_diario.cmd` | `./scrap_diario.sh` | Reporte diario por correo; lee el `.env` |
-| `.\test.cmd` | `./test.sh` | Pruebas |
-| `scrap_diario_oculto.vbs` | — | No hace falta: `cron` no abre ventana |
-
-Si la Terminal responde `permission denied`, el descompresor perdió el permiso de
-ejecución. Se recupera con `chmod +x *.sh`.
-
-### Agendarlo en Mac y Linux
-
-Con `cron`. Abre la tabla con `crontab -e` y añade una línea (aquí el proyecto está en
-`~/jobs-scraper`; cambia la ruta por la tuya):
-
-```bash
-0 8,14,20 * * * PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" "$HOME/jobs-scraper/scrap_diario.sh" >> "$HOME/jobs-scraper/data/cron.log" 2>&1
-```
-
-Corre a las 08:00, 14:00 y 20:00 y deja lo que imprime en `data/cron.log`. Antes de
-agendarlo, córrelo a mano una vez, para que exista `data/`.
-
-Diferencias con Windows que conviene saber:
-
-- **`PATH` en la línea, no es opcional.** `cron` arranca con un `PATH` mínimo que no incluye
-  la carpeta de `uv` (`~/.local/bin` o la de Homebrew). Sin él, la tarea falla con
-  `uv: not found` y solo lo verías en el log.
-- **En Mac, no lo pongas en Escritorio, Documentos ni Descargas.** macOS no deja a `cron`
-  leer esas carpetas y la tarea falla con `Operation not permitted`. Usa una carpeta
-  propia, como `~/jobs-scraper`, o dale a `cron` *Acceso total al disco* en Ajustes →
-  Privacidad y seguridad.
-- **Si el equipo está dormido a esa hora, la corrida se salta.** En Windows la tarea corre
-  al despertar (`StartWhenAvailable`); `cron` no. No se pierden ofertas: la siguiente
-  corrida trae las de las últimas 24 horas. Si la ventana entre corridas pasa de 24 horas,
-  sube `HORAS_DIARIO` en `main.py`.
-- **No guardes `data/historico.csv` desde Excel ni Numbers.** En Windows, Excel bloquea el
-  archivo y el scraper sale con código `3` sin tocar nada. En Mac no hay bloqueo: si lo
-  abres, corre el diario y después guardas, pisas lo que el diario acaba de escribir.
-  Nada se pierde, pero esas ofertas volverán a llegar como nuevas. Para mirarlo, ábrelo y
-  ciérralo sin guardar, o usa los `data/nuevos_*.csv`.
-
-## Pruebas
-
-```powershell
-.\test.cmd             # sin red, ~2 s: índice, ubicaciones, fechas, histórico...
-.\test.cmd -m vivo     # de humo contra los sitios reales (lentas, necesitan internet)
-```
-
-En Mac y Linux, `./test.sh` con las mismas opciones. GitHub Actions corre las de sin red
-en Windows, macOS y Linux en cada push (`.github/workflows/pruebas.yml`).
-
-Si las de `vivo` fallan, lo más probable es que un sitio haya cambiado su HTML o su API.
-
-## Extras opcionales
-
-No hacen falta para el scraper ni para el correo.
-
-- **`a_sqlite.py` — exportar para Power BI.** Convierte `data/historico.csv` en
-  `data/analisis.csv` (para Power BI, sin drivers) y `data/historico.db` (SQLite), con
-  columnas derivadas listas para segmentar: familia de puesto, puntaje, nivel y motivo de
-  exclusión.
-  ```powershell
-  uv run --python 3.12 --with-requirements requirements.txt --no-project python a_sqlite.py
-  ```
-- **`ingesta_google.py` y `scrap_google.cmd` — ofertas de Google Jobs.** Ingieren el CSV
-  de un scraper de Google Jobs **aparte, que no viene en este repo** (necesita Selenium y
-  Chrome). Sin ese scraper no sirven y puedes ignorarlos: el diario funciona igual.
-  `scrap_google.cmd` es solo para Windows.
+> `numpy==1.26.3`, que no tiene versión precompilada para Python 3.13 o superior. Los
+> lanzadores (`.cmd` / `.sh`) usan `uv` justamente para evitarlo.
 
 ## Aviso legal
 

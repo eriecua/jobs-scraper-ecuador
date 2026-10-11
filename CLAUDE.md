@@ -1,7 +1,9 @@
 # CLAUDE.md
 
 Scraper de empleos (LinkedIn + Indeed + Computrabajo + Multitrabajos) con histórico incremental y reporte
-diario por correo. El uso detallado está en `README.md`; aquí solo lo que muerde.
+diario por correo. El uso está en `README.md` (corto: instalación y los tres usos —CSV,
+correo, análisis—) y el detalle en `docs/` (`correo.md`, `analisis.md`, `configuracion.md`,
+`como-funciona.md`); aquí solo lo que muerde.
 
 ## Ejecutar
 
@@ -107,6 +109,11 @@ ofertas quedan marcadas como vistas y no salen en el correo.
 El repo vive en esta carpeta (`git init` hecho aquí, no en `Proyectos varios`, que
 arrastra `node_modules` y cosas ajenas). El `.git` de la carpeta padre está **vacío** y no
 funciona: ignóralo.
+
+El README se mantiene corto a propósito (estilo JobSpy): lo que no sea instalar o empezar
+uno de los tres usos va a `docs/`. Si se añade una opción o un archivo, se documenta en
+`docs/` y en el README solo si cambia el paso a paso. Al mover texto, comprobar que los
+enlaces y anclajes entre README y `docs/` siguen resolviendo.
 
 El repo es **público** (licencia MIT). El `README.md` es para desconocidos que lo
 descargan: nada de rutas de esta máquina ni datos de `data/`. `.gitattributes` saca
