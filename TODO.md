@@ -22,6 +22,16 @@ Objetivos del scraper, acordados con el usuario: (1) postular a lo que mejor enc
    commit. Los PNG son salida generada; los scripts de análisis repiten a mano los
    términos de `perfil.py` en `LIKE`.
 4. **No rellenar** las filas viejas del histórico sin empresa/fecha: decisión del usuario.
+5. **Base de análisis automática** (aplazado el 10/10/2026). Que `historico.db` y
+   `analisis.csv` se rehagan solos al final de cada corrida con ofertas nuevas, en
+   `_registrar()` de `main.py` junto a `habilidades.regenerar()`, y quitar el paso
+   `analizar` del README y de `docs/analisis.md` (que queda opcional, para rehacer tras
+   editar `perfil.py`). Medido sobre 11.635 ofertas: 2,5 s por corrida, de los que 1,8 s
+   son el puntaje de `perfil.py` sobre todos los títulos. Se rehace entera a propósito:
+   calcular solo las nuevas dejaría las viejas con el puntaje de un perfil anterior. Debe
+   ir en `try/except` con aviso, como las descripciones: si `historico.db` está abierta
+   en DB Browser o `analisis.csv` en Excel, no puede tumbar la búsqueda ni el correo.
+   Con su prueba (una base bloqueada no rompe la corrida).
 
 ---
 
