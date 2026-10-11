@@ -102,6 +102,11 @@ El repo vive en esta carpeta (`git init` hecho aquí, no en `Proyectos varios`, 
 arrastra `node_modules` y cosas ajenas). El `.git` de la carpeta padre está **vacío** y no
 funciona: ignóralo.
 
+El repo es **público** (licencia MIT). El `README.md` es para desconocidos que lo
+descargan: nada de rutas de esta máquina ni datos de `data/`. `.gitattributes` saca
+`TODO.md`, `CLAUDE.md`, `.claude/` y `legacy/` del zip de descarga (`export-ignore`);
+siguen en el repo. Comprobar con `git archive --format=zip -o t.zip HEAD`.
+
 ## Decisiones ya tomadas
 
 - **Sin skill.** Evaluado y descartado: los procedimientos candidatos son de dos pasos.

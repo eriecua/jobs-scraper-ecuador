@@ -1,0 +1,10 @@
+# Fuera del zip de descarga (git archive / "Source code" de un release de GitHub),
+# pero dentro del repo. Son notas y herramientas de desarrollo: quien descarga el
+# scraper para usarlo no las necesita.
+TODO.md export-ignore
+CLAUDE.md export-ignore
+.claude/ export-ignore
+legacy/ export-ignore
+
+# Los .sh se ejecutan en Mac/Linux: con CRLF fallan con "bad interpreter".
+*.sh text eol=lf

@@ -5,6 +5,11 @@ __pycache__/
 # Salidas del scraper
 data/
 reporte_*.xlsx
+# Graficos generados a partir de data/: llevan los mismos datos, no se publican
+graficos_generados/
+
+# Configuracion del editor (rutas absolutas de cada maquina)
+.vscode/
 
 # Credenciales del correo
 .env
