@@ -1,0 +1,32 @@
+# Pruebas sin red en los tres sistemas, en cada push. Es la unica comprobacion de que el
+# scraper corre en Mac: se desarrolla en Windows.
+#
+# Solo las de sin red: las "vivo" saldrian desde IPs de datacenter, que LinkedIn
+# bloquea con 429 (ver README, "Por que no en la nube").
+name: Pruebas
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruebas:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      # Por los lanzadores y no con uv a pelo: asi tambien se prueba que test.sh es
+      # ejecutable y tiene finales LF, que es lo primero que fallaria en un Mac.
+      - name: Pruebas (Mac y Linux)
+        if: runner.os != 'Windows'
+        run: ./test.sh
+
+      - name: Pruebas (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: test.cmd

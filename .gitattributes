@@ -4,7 +4,12 @@
 TODO.md export-ignore
 CLAUDE.md export-ignore
 .claude/ export-ignore
+.github/ export-ignore
 legacy/ export-ignore
 
-# Los .sh se ejecutan en Mac/Linux: con CRLF fallan con "bad interpreter".
+# Finales de linea fijos segun quien ejecuta el archivo, no segun la maquina de quien
+# lo clona. Los .sh corren en Mac/Linux: con CRLF fallan con "bad interpreter". Los
+# .cmd y .vbs corren en Windows: cmd.exe tiene fallos conocidos con lineas LF.
 *.sh text eol=lf
+*.cmd text eol=crlf
+*.vbs text eol=crlf

@@ -2,7 +2,7 @@
 
 ![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-green)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
-![Windows](https://img.shields.io/badge/plataforma-Windows-lightgrey)
+![Windows | macOS | Linux](https://img.shields.io/badge/plataforma-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
 Busca empleos en **LinkedIn, Indeed, Computrabajo y Multitrabajos**, los compara contra
 un histórico y guarda en CSV **solo lo que no habías visto antes**. Agendado, te manda
@@ -21,8 +21,9 @@ que encajan con tu perfil.
 
 - **Ecuador.** Las ciudades, provincias y rutas de Computrabajo y Multitrabajos son las de
   Ecuador. Otros países necesitarían adaptar `ubicaciones.py` y `computrabajo.py`.
-- **Windows** para los lanzadores (`.cmd`) y el agendado (Programador de tareas). El
-  código Python funciona en cualquier sistema; ver [Mac y Linux](#mac-y-linux).
+- **Windows, macOS y Linux.** Cada sistema tiene sus lanzadores: `.cmd` en Windows, `.sh`
+  en Mac y Linux. Las diferencias están en [Mac y Linux](#mac-y-linux). Las pruebas
+  corren en los tres sistemas en cada cambio.
 - **Perfil de ejemplo.** `perfil.py` y las ciudades de `main.py` vienen configurados para
   un perfil de Datos/BI y Procesos en Quito, Guayaquil, Santo Domingo y Cuenca. Cámbialos
   por los tuyos (ver [Configurar](#configurar-los-parámetros-del-buscador)).
@@ -32,23 +33,30 @@ que encajan con tu perfil.
 1. **Descarga** el proyecto: botón verde *Code → Download ZIP*, o el zip de la última
    versión en *Releases*. Descomprímelo en una carpeta sin acentos.
 2. **Instala [uv](https://docs.astral.sh/uv/getting-started/installation/)**, lo único
-   que hace falta. En PowerShell:
+   que hace falta. En Windows, desde PowerShell:
    ```powershell
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
+   En Mac o Linux, desde la Terminal (o `brew install uv`):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
    No hace falta instalar Python: la primera corrida descarga Python 3.12 y las
    dependencias en un entorno aparte (tarda un par de minutos, solo esa vez).
-3. **Prueba una búsqueda.** Abre PowerShell en la carpeta del proyecto:
+3. **Prueba una búsqueda** desde la carpeta del proyecto. En Windows (PowerShell):
    ```powershell
    .\scrap.cmd "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 20
    ```
-   Las ofertas nuevas quedan en `data/nuevos_*.csv`, que se abre con Excel.
-4. **Para el correo diario**, copia `.env.example` como `.env` y rellénalo con tu Gmail y
-   una [contraseña de aplicación](#credenciales). Pruébalo:
-   ```powershell
-   .\scrap_diario.cmd
+   En Mac o Linux:
+   ```bash
+   ./scrap.sh "Data Analyst" --ubicacion "Quito, Ecuador" --resultados 20
    ```
-5. **Agéndalo** para que corra solo: ver [Agendarlo](#agendarlo).
+   Las ofertas nuevas quedan en `data/nuevos_*.csv`, que se abre con Excel o Numbers.
+4. **Para el correo diario**, copia `.env.example` como `.env` y rellénalo con tu Gmail y
+   una [contraseña de aplicación](#credenciales). Pruébalo con `.\scrap_diario.cmd`
+   (Windows) o `./scrap_diario.sh` (Mac/Linux).
+5. **Agéndalo** para que corra solo: [en Windows](#agendarlo) o
+   [en Mac y Linux](#agendarlo-en-mac-y-linux).
 
 > **La primera corrida reporta todo como nuevo**, porque el histórico está vacío. A partir
 > de la segunda solo verás lo que de verdad salió desde la anterior.
@@ -217,8 +225,9 @@ cambia en el Programador de tareas de Windows, no aquí.
 
 ## Uso
 
-Desde **PowerShell o cmd** (no Git Bash: la invocación del `.cmd` falla ahí por la
-interoperabilidad con rutas de Windows):
+En Windows, desde **PowerShell o cmd** (no Git Bash: la invocación del `.cmd` falla ahí
+por la interoperabilidad con rutas de Windows). En Mac y Linux, las mismas opciones con
+`./scrap.sh` en lugar de `.\scrap`:
 
 ```powershell
 .\scrap "Data Analyst"                                   # lo mínimo
@@ -266,8 +275,9 @@ Cada uno hace un solo trabajo:
 | `graficos.py` | Las barras y cifras del correo, en HTML |
 | `correo.py` | Lo envía por Gmail |
 | `scrap.cmd` / `scrap_diario.cmd` | Lanzadores para Windows |
-| `scrap_diario_oculto.vbs` | Lanza el diario sin abrir ventana (para el agendado) |
-| `test.cmd`, `tests/` | Pruebas |
+| `scrap.sh` / `scrap_diario.sh` | Lanzadores para Mac y Linux |
+| `scrap_diario_oculto.vbs` | Lanza el diario sin abrir ventana (para el agendado en Windows) |
+| `test.cmd`, `test.sh`, `tests/` | Pruebas |
 | `a_sqlite.py`, `ingesta_google.py`, `scrap_google.cmd` | [Extras opcionales](#extras-opcionales) |
 
 ## Salida e histórico
@@ -521,15 +531,48 @@ Corre aunque la terminal esté cerrada, siempre que el PC esté encendido.
 
 ## Mac y Linux
 
-El código Python no depende de Windows; solo los lanzadores. Con `uv` instalado, desde la
-carpeta del proyecto:
+El código Python es el mismo en los tres sistemas; solo cambian los lanzadores:
+
+| Windows | Mac / Linux | Qué hace |
+|---|---|---|
+| `.\scrap.cmd` | `./scrap.sh` | Búsqueda puntual (mismas opciones, ver [Uso](#uso)) |
+| `.\scrap_diario.cmd` | `./scrap_diario.sh` | Reporte diario por correo; lee el `.env` |
+| `.\test.cmd` | `./test.sh` | Pruebas |
+| `scrap_diario_oculto.vbs` | — | No hace falta: `cron` no abre ventana |
+
+Si la Terminal responde `permission denied`, el descompresor perdió el permiso de
+ejecución. Se recupera con `chmod +x *.sh`.
+
+### Agendarlo en Mac y Linux
+
+Con `cron`. Abre la tabla con `crontab -e` y añade una línea (aquí el proyecto está en
+`~/jobs-scraper`; cambia la ruta por la tuya):
 
 ```bash
-./scrap.sh "Data Analyst" --ubicacion "Quito, Ecuador"
+0 8,14,20 * * * PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" "$HOME/jobs-scraper/scrap_diario.sh" >> "$HOME/jobs-scraper/data/cron.log" 2>&1
 ```
 
-Para el correo diario, exporta las variables de `.env` antes (`set -a; . ./.env; set +a`)
-y llama `./scrap.sh --diario`. Para agendarlo usa `cron` en lugar del Programador de tareas.
+Corre a las 08:00, 14:00 y 20:00 y deja lo que imprime en `data/cron.log`. Antes de
+agendarlo, córrelo a mano una vez, para que exista `data/`.
+
+Diferencias con Windows que conviene saber:
+
+- **`PATH` en la línea, no es opcional.** `cron` arranca con un `PATH` mínimo que no incluye
+  la carpeta de `uv` (`~/.local/bin` o la de Homebrew). Sin él, la tarea falla con
+  `uv: not found` y solo lo verías en el log.
+- **En Mac, no lo pongas en Escritorio, Documentos ni Descargas.** macOS no deja a `cron`
+  leer esas carpetas y la tarea falla con `Operation not permitted`. Usa una carpeta
+  propia, como `~/jobs-scraper`, o dale a `cron` *Acceso total al disco* en Ajustes →
+  Privacidad y seguridad.
+- **Si el equipo está dormido a esa hora, la corrida se salta.** En Windows la tarea corre
+  al despertar (`StartWhenAvailable`); `cron` no. No se pierden ofertas: la siguiente
+  corrida trae las de las últimas 24 horas. Si la ventana entre corridas pasa de 24 horas,
+  sube `HORAS_DIARIO` en `main.py`.
+- **No guardes `data/historico.csv` desde Excel ni Numbers.** En Windows, Excel bloquea el
+  archivo y el scraper sale con código `3` sin tocar nada. En Mac no hay bloqueo: si lo
+  abres, corre el diario y después guardas, pisas lo que el diario acaba de escribir.
+  Nada se pierde, pero esas ofertas volverán a llegar como nuevas. Para mirarlo, ábrelo y
+  ciérralo sin guardar, o usa los `data/nuevos_*.csv`.
 
 ## Pruebas
 
@@ -537,6 +580,9 @@ y llama `./scrap.sh --diario`. Para agendarlo usa `cron` en lugar del Programado
 .\test.cmd             # sin red, ~2 s: índice, ubicaciones, fechas, histórico...
 .\test.cmd -m vivo     # de humo contra los sitios reales (lentas, necesitan internet)
 ```
+
+En Mac y Linux, `./test.sh` con las mismas opciones. GitHub Actions corre las de sin red
+en Windows, macOS y Linux en cada push (`.github/workflows/pruebas.yml`).
 
 Si las de `vivo` fallan, lo más probable es que un sitio haya cambiado su HTML o su API.
 
@@ -554,6 +600,7 @@ No hacen falta para el scraper ni para el correo.
 - **`ingesta_google.py` y `scrap_google.cmd` — ofertas de Google Jobs.** Ingieren el CSV
   de un scraper de Google Jobs **aparte, que no viene en este repo** (necesita Selenium y
   Chrome). Sin ese scraper no sirven y puedes ignorarlos: el diario funciona igual.
+  `scrap_google.cmd` es solo para Windows.
 
 ## Aviso legal
 

@@ -15,6 +15,12 @@ La tarea `ScraperEmpleos` lanza el diario a las 08:00, 14:00 y 20:00 vía
 
 Desde **PowerShell o cmd**, no desde Git Bash (la invocación del `.cmd` falla ahí).
 
+En Mac/Linux: `scrap.sh`, `scrap_diario.sh` y `test.sh`. Llevan **la misma línea `uv`**
+que su `.cmd`: si cambia una, cambia la otra. `scrap_diario.sh` lee el `.env` línea a
+línea, no con `. ./.env` (la contraseña de aplicación lleva espacios). Los `.sh` se
+commitean con `git update-index --chmod=+x` (Windows no guarda el bit) y la CI los corre
+en macOS.
+
 **Nunca** `pip install -r requirements.txt` con el Python del sistema: `python-jobspy`
 fija `numpy==1.26.3`, que no tiene wheel para el Python 3.14 instalado e intentaría
 compilarlo. `scrap.cmd` usa `uv` para provisionar Python 3.12 aparte.

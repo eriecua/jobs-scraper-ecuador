@@ -1,11 +1,11 @@
 r"""
 Scraper de empleos (LinkedIn + Indeed + Computrabajo + Multitrabajos) con historico incremental.
 
-Uso:  .\scrap "Data Analyst"
-      .\scrap_diario.cmd          reporte diario por correo
+Uso:  .\scrap.cmd "Data Analyst"       (Mac/Linux: ./scrap.sh "Data Analyst")
+      .\scrap_diario.cmd               reporte diario por correo (./scrap_diario.sh)
 
-jobspy exige numpy 1.26 y pandas 2.x, que no compilan en el Python 3.14 del sistema,
-por eso scrap.cmd lo ejecuta en un entorno con Python 3.12 gestionado por uv.
+jobspy exige numpy 1.26 y pandas 2.x, sin version precompilada para Python 3.13+,
+por eso los lanzadores lo ejecutan en un entorno con Python 3.12 gestionado por uv.
 
 Aqui solo viven la configuracion, la orquestacion y la linea de comandos. El trabajo de
 verdad esta repartido:
@@ -310,7 +310,8 @@ def main():
     terminos = _terminos(args)
     if not terminos:
         print('[ERROR] Indica al menos un termino, como argumento o con --termino. '
-              'Ej: .\\scrap.cmd "Data Analyst"', file=sys.stderr)
+              'Ej: .\\scrap.cmd "Data Analyst"  (Mac/Linux: ./scrap.sh "Data Analyst")',
+              file=sys.stderr)
         return EXIT_SCRAPE_FALLO
 
     piezas, fallidos = [], []
