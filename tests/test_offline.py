@@ -304,6 +304,48 @@ def test_busqueda_suelta_no_toca_el_outbox(diario, monkeypatch):
     assert open(main.CORREO_PENDIENTE, encoding='utf-8-sig').read() == antes
 
 
+def test_todas_guarda_tambien_las_ya_vistas(diario, monkeypatch):
+    oferta = _ofertas('mt-1', 'mt-2').drop(columns=['description'])
+    # La misma vacante que mt-2 publicada en otro sitio: otro id, otra URL, misma clave.
+    doble = oferta.iloc[[1]].assign(id='in-2', site='indeed', job_url='https://y/2')
+    monkeypatch.setattr(main, 'buscar', lambda **k: (pd.concat([oferta, doble]), []))
+
+    monkeypatch.setattr(sys, 'argv', ['main.py', 'analista'])
+    assert main.main() == main.EXIT_OK
+    # Segunda corrida igual: sin --todas no habria CSV, porque nada es nuevo.
+    monkeypatch.setattr(sys, 'argv', ['main.py', 'analista', '--todas'])
+    assert main.main() == main.EXIT_OK
+
+    archivos = [f for f in os.listdir('data') if f.startswith('todas_')]
+    assert len(archivos) == 1
+    guardado = pd.read_csv(os.path.join('data', archivos[0]), dtype=str)
+    assert sorted(guardado['id']) == ['mt-1', 'mt-2']  # la doble, una sola vez
+    assert {'ciudad', 'provincia'} <= set(guardado.columns)
+
+
+# --- a_sqlite.py: la base para analizar -------------------------------------------------
+
+import a_sqlite  # noqa: E402
+
+
+def test_analizar_una_fila_por_id(tmp_path, monkeypatch):
+    # historico.actualizar() vuelve a anadir el mismo id si la oferta se republica pasados
+    # DIAS_CADUCIDAD dias. Con el id repetido, Power BI no puede relacionar analisis.csv
+    # (lado uno) con habilidades.csv (lado varios).
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'data').mkdir()
+    oferta = _ofertas('mt-1', 'mt-2').drop(columns=['description'])
+    repost = oferta.iloc[[0]].assign(visto_primera_vez='2026-12-20')
+    pd.concat([oferta.assign(visto_primera_vez='2026-10-05'), repost]).to_csv(
+        a_sqlite.CSV, index=False)
+
+    df, _ = a_sqlite.construir()
+
+    assert sorted(df['id']) == ['mt-1', 'mt-2']
+    assert df.set_index('id').loc['mt-1', 'visto_primera_vez'] == '2026-10-05'  # la primera
+    assert pd.read_csv(a_sqlite.PARA_BI, dtype=str)['id'].is_unique
+
+
 # --- buscador.py: registro de corridas ---------------------------------------------------
 
 import buscador  # noqa: E402
