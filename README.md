@@ -586,6 +586,10 @@ en Windows, macOS y Linux en cada push (`.github/workflows/pruebas.yml`).
 
 Si las de `vivo` fallan, lo más probable es que un sitio haya cambiado su HTML o su API.
 
+## Resultado
+En esto desemboca el código donde se presentará los puestos más recientes:
+
+
 ## Extras opcionales
 
 No hacen falta para el scraper ni para el correo.
