@@ -588,7 +588,7 @@ Si las de `vivo` fallan, lo más probable es que un sitio haya cambiado su HTML 
 
 ## Resultado
 En esto desemboca el código donde se presentará los puestos más recientes:
-
+![Reporte diario](./Correo.png)
 
 ## Extras opcionales
 
